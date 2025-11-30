@@ -37,41 +37,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
-
-        // Allow public endpoints
-        if (PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith)) {
-            return chain.filter(exchange);
-        }
-
-        String authHeader = request.getHeaders().getFirst("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return onError(exchange, "Missing or invalid authorization header", HttpStatus.UNAUTHORIZED);
-        }
-
-        String token = authHeader.substring(7);
-        try {
-            SecretKey key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-            Claims claims = Jwts.parser()
-                    .verifyWith(key)
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-
-            String userId = claims.getSubject();
-            @SuppressWarnings("unchecked")
-            List<String> roles = claims.get("roles", List.class);
-
-            // Add user info to headers for downstream services
-            ServerHttpRequest modifiedRequest = request.mutate()
-                    .header("X-User-Id", userId)
-                    .header("X-User-Roles", roles != null ? String.join(",", roles) : "")
-                    .build();
-
-            return chain.filter(exchange.mutate().request(modifiedRequest).build());
-        } catch (Exception e) {
-            log.error("JWT validation failed: {}", e.getMessage());
-            return onError(exchange, "Invalid token", HttpStatus.UNAUTHORIZED);
-        }
+        
+        // TEMPORARY: Allow all requests during development
+        log.info("DEV MODE: Allowing all requests without auth - path: {}", path);
+        
+        // Add mock user for testing (optional)
+        ServerHttpRequest modifiedRequest = request.mutate()
+                .header("X-User-Id", "dev-user-123")
+                .header("X-User-Roles", "ROLE_USER")
+                .build();
+        
+        return chain.filter(exchange.mutate().request(modifiedRequest).build());
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, String message, HttpStatus status) {

@@ -32,5 +32,14 @@ public class AuthController {
         AuthResponse response = userService.login(request);
         return ResponseEntity.ok(response);
     }
-}
 
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("Auth endpoint works!");
+    }
+
+    @PostMapping("/simple-test")
+    public ResponseEntity<String> simpleTest() {
+        return ResponseEntity.ok("POST endpoint works!");
+    }
+}
