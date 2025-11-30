@@ -12,21 +12,33 @@ spring:
           lower-case-service-id: true
       routes:
         - id: user-service-users
-          uri: lb://user-service
+          uri: http://localhost:8081
           predicates:
             - Path=/v1/users/**
           filters:
             - StripPrefix=1
         - id: user-service-auth
-          uri: lb://user-service
+          uri: http://localhost:8081
           predicates:
             - Path=/v1/auth/**
           filters:
             - StripPrefix=1
         - id: event-service
-          uri: lb://event-service
+          uri: http://localhost:8082
           predicates:
             - Path=/v1/events/**
+          filters:
+            - StripPrefix=1
+        - id: reservation-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/v1/reservations/**
+          filters:
+            - StripPrefix=1
+        - id: payment-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/v1/payments/**
           filters:
             - StripPrefix=1
         - id: reservation-service

@@ -37,8 +37,14 @@
         <module>api-gateway</module>
         <module>common-lib</module>
         <module>user-service</module>
+        <module>event-service</module>
+        <module>reservation-service</module>
+        <module>payment-service</module>
         <!-- TODO: Add these modules when implemented -->
-        <!-- <module>event-service</module> -->
+        <!-- <module>notification-service</module> -->
+        <!-- <module>notification-service</module> -->
+        <!-- <module>payment-service</module> -->
+        <!-- <module>notification-service</module> -->
         <!-- <module>reservation-service</module> -->
         <!-- <module>payment-service</module> -->
         <!-- <module>notification-service</module> -->

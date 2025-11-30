@@ -1,11 +1,11 @@
 server:
-  port: 8081
+  port: 8083
 
 spring:
   application:
-    name: user-service
+    name: reservation-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/userdb
+    url: jdbc:postgresql://localhost:5432/reservationdb
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -29,10 +29,6 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
 
-jwt:
-  secret: ${JWT_SECRET:your-256-bit-secret-key-for-jwt-signing-must-be-at-least-32-characters}
-  expiration: 86400000
-
 management:
   endpoints:
     web:
@@ -47,3 +43,7 @@ logging:
     json: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","logger":"%logger{36}","message":"%msg","traceId":"%X{correlationId}"}'
   level:
     com.eventplatform: INFO
+
+# Reservation limits
+reservation:
+  max-tickets-per-user-per-event: 4
