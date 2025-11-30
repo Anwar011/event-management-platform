@@ -1,8 +1,10 @@
 package com.eventplatform.payment.client;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
+@ConditionalOnProperty(name = "feature.reservation-integration", havingValue = "true", matchIfMissing = false)
 @FeignClient(name = "reservation-service", url = "http://localhost:8083")
 public interface ReservationServiceClient {
 

@@ -1,10 +1,12 @@
 package com.eventplatform.reservation.client;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 
+@ConditionalOnProperty(name = "feature.event-integration", havingValue = "true", matchIfMissing = false)
 @FeignClient(name = "event-service", url = "http://localhost:8082")
 public interface EventServiceClient {
 

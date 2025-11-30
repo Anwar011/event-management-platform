@@ -28,9 +28,9 @@ public class PaymentService {
 
     private final PaymentIntentRepository paymentIntentRepository;
     private final PaymentRepository paymentRepository;
-    // private final ReservationServiceClient reservationServiceClient; // Temporarily disabled
+    // private final ReservationServiceClient reservationServiceClient; // Conditionally available
 
-    @Value("${app.reservation-service.enabled:true}")
+    @Value("${feature.reservation-integration:true}")
     private boolean reservationServiceEnabled;
 
     @Value("${payment.success-rate:0.95}")
@@ -39,25 +39,25 @@ public class PaymentService {
     /**
      * Safely call Reservation Service with fallback for when service is unavailable
      */
-    private ReservationServiceClient.ReservationResponse getReservationSafely(String reservationId) {
+    private Optional<ReservationServiceClient.ReservationResponse> getReservationSafely(String reservationId) {
         if (!reservationServiceEnabled) {
             log.warn("Reservation Service disabled, using default values for reservation {}", reservationId);
-            return new ReservationServiceClient.ReservationResponse(
+            return Optional.of(new ReservationServiceClient.ReservationResponse(
                 1L, reservationId, 1L, 1L, 1,
                 BigDecimal.valueOf(29.99), "PENDING", null,
                 LocalDateTime.now(), LocalDateTime.now()
-            );
+            ));
         }
 
         try {
             throw new RuntimeException("Reservation Service client not available - implement fallback");
         } catch (Exception e) {
             log.error("Failed to get reservation {} from Reservation Service, using defaults", reservationId, e);
-            return new ReservationServiceClient.ReservationResponse(
+            return Optional.of(new ReservationServiceClient.ReservationResponse(
                 1L, reservationId, 1L, 1L, 1,
                 BigDecimal.valueOf(29.99), "PENDING", null,
                 LocalDateTime.now(), LocalDateTime.now()
-            );
+            ));
         }
     }
 
@@ -98,7 +98,11 @@ public class PaymentService {
         }
 
         // Validate reservation exists and is in correct state
-        ReservationServiceClient.ReservationResponse reservation = getReservationSafely(request.getReservationId());
+        Optional<ReservationServiceClient.ReservationResponse> reservationOpt = getReservationSafely(request.getReservationId());
+        if (reservationOpt.isEmpty()) {
+            throw new IllegalStateException("Reservation service unavailable for validation");
+        }
+        ReservationServiceClient.ReservationResponse reservation = reservationOpt.get();
 
         // Verify amount matches reservation total
         if (reservation.totalPrice().compareTo(request.getAmount()) != 0) {
@@ -159,9 +163,14 @@ public class PaymentService {
         }
 
         // Validate reservation is still valid
-        ReservationServiceClient.ReservationResponse reservation =
-            reservationServiceClient.getReservation(intent.getReservationId());
+        Optional<ReservationServiceClient.ReservationResponse> reservationOpt =
+            getReservationSafely(intent.getReservationId());
 
+        if (reservationOpt.isEmpty()) {
+            throw new IllegalStateException("Reservation service unavailable for validation");
+        }
+
+        ReservationServiceClient.ReservationResponse reservation = reservationOpt.get();
         if (!"PENDING".equals(reservation.status())) {
             throw new IllegalStateException("Reservation is not in pending state: " + reservation.status());
         }

@@ -48,11 +48,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                     @Param("endDate") LocalDateTime endDate,
                                     @Param("status") String status);
 
-    // Paginated search with filters
+    // Paginated search with filters - simplified to avoid LOWER() issues
     @Query("SELECT e FROM Event e WHERE " +
-           "(:searchTerm IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-           "LOWER(e.description) LIKE LOWER(CONCAT('%', :searchTerm, '%'))) AND " +
-           "(:city IS NULL OR LOWER(e.city) = LOWER(:city)) AND " +
+           "(:searchTerm IS NULL OR e.title LIKE CONCAT('%', :searchTerm, '%') OR " +
+           "e.description LIKE CONCAT('%', :searchTerm, '%')) AND " +
+           "(:city IS NULL OR e.city = :city) AND " +
            "(:eventType IS NULL OR e.eventType = :eventType) AND " +
            "(:status IS NULL OR e.status = :status) AND " +
            "(:startDate IS NULL OR e.startDate >= :startDate) AND " +

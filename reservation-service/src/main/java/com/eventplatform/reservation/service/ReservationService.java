@@ -29,7 +29,7 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     // private final EventServiceClient eventServiceClient; // Temporarily disabled
 
-    @Value("${app.event-service.enabled:true}")
+    @Value("${feature.event-integration:true}")
     private boolean eventServiceEnabled;
 
     @Value("${reservation.max-tickets-per-user-per-event:4}")
@@ -243,13 +243,12 @@ public class ReservationService {
     }
 
     private void checkEventAvailability(Long eventId, int quantity) {
-        EventServiceClient.EventAvailabilityResponse availability =
-            eventServiceClient.getEventAvailability(eventId);
+        Integer availableCapacity = getAvailableCapacitySafely(eventId);
 
-        if (availability.availableCapacity() < quantity) {
+        if (availableCapacity < quantity) {
             throw new IllegalStateException(
                 String.format("Insufficient capacity for event %d. Available: %d, Requested: %d",
-                    eventId, availability.availableCapacity(), quantity));
+                    eventId, availableCapacity, quantity));
         }
     }
 
