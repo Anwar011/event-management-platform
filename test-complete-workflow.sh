@@ -123,7 +123,7 @@ EVENT_DATA="{
     \"description\": \"Testing the complete booking workflow\",
     \"eventType\": \"WORKSHOP\",
     \"venue\": \"Test Center\",
-    \"startDate\": \"2024-12-25T14:00:00\",
+    \"startDate\": \"2026-06-25T14:00:00\",
     \"capacity\": 50,
     \"price\": 29.99,
     \"organizerId\": 1
@@ -175,6 +175,7 @@ CREATE_RESERVATION_RESPONSE=$(curl -s -X POST $GATEWAY_URL/v1/reservations \
     -d "$RESERVATION_DATA")
 
 RESERVATION_ID=$(echo $CREATE_RESERVATION_RESPONSE | jq -r '.reservationId' 2>/dev/null || echo "")
+RESERVATION_TOTAL=$(echo $CREATE_RESERVATION_RESPONSE | jq -r '.totalPrice' 2>/dev/null || echo "0")
 
 if [ -n "$RESERVATION_ID" ] && [ "$RESERVATION_ID" != "null" ]; then
     echo -e "${GREEN}✅ PASSED: Reservation created with ID: $RESERVATION_ID${NC}"
@@ -193,7 +194,7 @@ echo "================================================================="
 PAYMENT_INTENT_DATA="{
     \"reservationId\": \"$RESERVATION_ID\",
     \"userId\": $USER_ID,
-    \"amount\": 59.98,
+    \"amount\": $RESERVATION_TOTAL,
     \"currency\": \"USD\",
     \"description\": \"Payment for Complete Workflow Test Event\",
     \"idempotencyKey\": \"payment-workflow-$TIMESTAMP\"
@@ -292,3 +293,5 @@ fi
 echo -e "\n${BLUE}=================================================================${NC}"
 
 exit $FAILED_TESTS
+
+

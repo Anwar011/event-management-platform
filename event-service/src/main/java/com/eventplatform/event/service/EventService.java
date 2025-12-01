@@ -12,6 +12,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -65,6 +66,7 @@ public class EventService {
                 .eventId(event.getId())
                 .totalCapacity(request.getCapacity())
                 .reservedCapacity(0)
+                .availableCapacity(request.getCapacity()) // Initialize available capacity
                 .build();
 
         eventCapacityRepository.save(capacity);
@@ -188,22 +190,51 @@ public class EventService {
     public Page<EventResponse> searchEvents(EventSearchRequest request) {
         log.info("Searching events with filters: {}", request);
 
-        Sort sort = Sort.by(request.getSortDirection().equalsIgnoreCase("DESC") ?
-                           Sort.Direction.DESC : Sort.Direction.ASC, request.getSortBy());
+        String status = request.getStatus() != null ? request.getStatus() : "PUBLISHED";
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), 
+                Sort.by(Sort.Direction.ASC, "startDate"));
 
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+        // Use simple query - filter by status first, then apply other filters in memory if needed
+        // For now, just return published events with pagination
+        Page<Event> eventsPage = eventRepository.findByStatusOrderByStartDateAsc(status, pageable);
 
-        Page<Event> eventsPage = eventRepository.findEventsWithFilters(
-                request.getSearchTerm(),
-                request.getCity(),
-                request.getEventType(),
-                request.getStatus() != null ? request.getStatus() : "PUBLISHED", // Default to published
-                request.getStartDate(),
-                request.getEndDate(),
-                pageable
-        );
+        // Apply additional filters if provided (simple in-memory filtering for now)
+        List<Event> filteredEvents = eventsPage.getContent().stream()
+                .filter(event -> {
+                    if (request.getCity() != null && !request.getCity().isEmpty() && 
+                        !event.getCity().equalsIgnoreCase(request.getCity())) {
+                        return false;
+                    }
+                    if (request.getEventType() != null && !request.getEventType().isEmpty() && 
+                        !event.getEventType().equalsIgnoreCase(request.getEventType())) {
+                        return false;
+                    }
+                    if (request.getSearchTerm() != null && !request.getSearchTerm().isEmpty()) {
+                        String searchLower = request.getSearchTerm().toLowerCase();
+                        if (!event.getTitle().toLowerCase().contains(searchLower) && 
+                            (event.getDescription() == null || !event.getDescription().toLowerCase().contains(searchLower))) {
+                            return false;
+                        }
+                    }
+                    if (request.getStartDate() != null && event.getStartDate().isBefore(request.getStartDate())) {
+                        return false;
+                    }
+                    if (request.getEndDate() != null && event.getEndDate() != null && 
+                        event.getEndDate().isAfter(request.getEndDate())) {
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
 
-        return eventsPage.map(event -> {
+        // Create a new page with filtered results
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), filteredEvents.size());
+        List<Event> pagedEvents = filteredEvents.subList(Math.min(start, filteredEvents.size()), end);
+        
+        Page<Event> resultPage = new PageImpl<>(pagedEvents, pageable, filteredEvents.size());
+
+        return resultPage.map(event -> {
             EventCapacity capacity = eventCapacityRepository.findById(event.getId()).orElse(null);
             return mapToResponse(event, capacity);
         });

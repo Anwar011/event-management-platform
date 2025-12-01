@@ -25,3 +25,5 @@ public class CreateReservationRequest {
     // Optional: specific ticket types (for future extensibility)
     private List<ReservationItemRequest> items;
 }
+
+

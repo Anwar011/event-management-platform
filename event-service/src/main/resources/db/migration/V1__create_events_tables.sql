@@ -45,3 +45,5 @@ VALUES
 -- Initialize capacity tracking for the sample events
 INSERT INTO event_capacity (event_id, total_capacity, reserved_capacity)
 SELECT id, capacity, 0 FROM events;
+
+

@@ -40,3 +40,5 @@ VALUES
 INSERT INTO reservation_items (reservation_id, ticket_type, quantity, unit_price)
 SELECT r.id, 'STANDARD', r.quantity, r.total_price/r.quantity
 FROM reservations r;
+
+

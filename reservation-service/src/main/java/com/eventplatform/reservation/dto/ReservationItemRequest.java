@@ -19,3 +19,5 @@ public class ReservationItemRequest {
     @DecimalMin(value = "0.00", message = "Unit price cannot be negative")
     private BigDecimal unitPrice;
 }
+
+

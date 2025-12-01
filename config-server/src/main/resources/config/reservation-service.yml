@@ -47,3 +47,5 @@ logging:
 # Reservation limits
 reservation:
   max-tickets-per-user-per-event: 4
+
+

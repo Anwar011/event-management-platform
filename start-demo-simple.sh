@@ -92,3 +92,5 @@ echo ""
 echo -e "${BLUE}📋 To check status: ./demo-platform.sh quick${NC}"
 echo -e "${BLUE}📋 To run full demo: ./demo-platform.sh${NC}"
 echo -e "${BLUE}📋 To stop all: pkill -f \"spring-boot:run\"${NC}"
+
+

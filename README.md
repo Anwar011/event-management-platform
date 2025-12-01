@@ -155,3 +155,5 @@ event-management-platform/
 
 This project is for educational purposes.
 
+
+

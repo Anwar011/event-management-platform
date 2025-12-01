@@ -1,0 +1,18 @@
+<mat-toolbar color="primary" class="navbar">
+  <div class="nav-brand">
+    <mat-icon>event</mat-icon>
+    <span>EventHub</span>
+  </div>
+
+  <div class="nav-links">
+    <a mat-button routerLink="/events" routerLinkActive="active">Events</a>
+    <a mat-button routerLink="/dashboard" routerLinkActive="active" *ngIf="isAuthenticated">Dashboard</a>
+    <a mat-button routerLink="/reservations" routerLinkActive="active" *ngIf="isAuthenticated">Reservations</a>
+    <a mat-button (click)="logout()" *ngIf="isAuthenticated">Logout</a>
+    <a mat-button routerLink="/auth/login" *ngIf="!isAuthenticated">Login</a>
+  </div>
+
+  <div class="user-info" *ngIf="isAuthenticated">
+    <span>Welcome, {{ currentUser?.firstName }}</span>
+  </div>
+</mat-toolbar>

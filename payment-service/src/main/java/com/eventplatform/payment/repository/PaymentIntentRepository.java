@@ -35,3 +35,5 @@ public interface PaymentIntentRepository extends JpaRepository<PaymentIntent, Lo
     // Check if idempotency key exists
     boolean existsByIdempotencyKey(String idempotencyKey);
 }
+
+

@@ -18,3 +18,5 @@ public class EventSearchRequest {
     private String sortBy = "startDate";
     private String sortDirection = "ASC";
 }
+
+

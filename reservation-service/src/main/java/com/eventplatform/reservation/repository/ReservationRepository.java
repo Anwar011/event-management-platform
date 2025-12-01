@@ -41,3 +41,5 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     // Check if idempotency key exists
     boolean existsByIdempotencyKey(String idempotencyKey);
 }
+
+

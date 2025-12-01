@@ -12,3 +12,5 @@ public class CapturePaymentRequest {
     // Optional: additional capture parameters could go here
     private String paymentMethodDetails;
 }
+
+

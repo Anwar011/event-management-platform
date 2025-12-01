@@ -59,3 +59,5 @@ echo ""
 echo "To view logs: docker-compose -f docker-compose.dev.yml logs -f"
 echo "To stop: docker-compose -f docker-compose.dev.yml down"
 
+
+

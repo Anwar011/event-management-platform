@@ -143,3 +143,5 @@ tail -f /tmp/api-gateway.log
 
 **Only blocker**: PostgreSQL database needs to be set up for User Service to complete the test.
 
+
+

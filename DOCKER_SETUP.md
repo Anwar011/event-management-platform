@@ -112,3 +112,5 @@ After PostgreSQL is running:
 4. Service will register with Eureka
 5. Start API Gateway to complete the setup
 
+
+

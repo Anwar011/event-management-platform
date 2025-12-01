@@ -205,3 +205,5 @@ echo -e "${YELLOW}📋 Note: Reservation & Payment services need startup fixes${
 echo -e "${YELLOW}🔄 Next: Fix Reservation & Payment service startup issues${NC}"
 
 exit $FAILED_TESTS
+
+

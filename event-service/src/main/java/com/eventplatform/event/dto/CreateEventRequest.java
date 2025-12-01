@@ -48,3 +48,5 @@ public class CreateEventRequest {
     @NotNull(message = "Organizer ID is required")
     private Long organizerId;
 }
+
+

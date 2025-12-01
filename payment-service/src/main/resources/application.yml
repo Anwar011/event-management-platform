@@ -57,4 +57,4 @@ payment:
 
 # Feature flags
 feature:
-  reservation-integration: false  # Disable during startup testing
+  reservation-integration: true  # Enable reservation service integration

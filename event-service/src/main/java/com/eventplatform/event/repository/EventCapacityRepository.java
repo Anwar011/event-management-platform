@@ -25,3 +25,5 @@ public interface EventCapacityRepository extends JpaRepository<EventCapacity, Lo
     @Query("SELECT ec.availableCapacity FROM EventCapacity ec WHERE ec.eventId = :eventId")
     Integer getAvailableCapacity(@Param("eventId") Long eventId);
 }
+
+

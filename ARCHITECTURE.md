@@ -756,3 +756,5 @@ jobs:
 **This architecture provides a robust, scalable foundation for a production-grade event management platform. The microservices design ensures maintainability, the security implementation protects user data, and the infrastructure components enable seamless scaling and deployment.**
 
 **For questions or contributions, please refer to the individual service README files or create an issue in the project repository.** 📚
+
+

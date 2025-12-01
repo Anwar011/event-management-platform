@@ -33,3 +33,5 @@ public class EventResponse {
     private Integer availableCapacity;
     private Integer reservedCapacity;
 }
+
+
