@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Event Platform Backend Tester</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Event Platform Backend Tester</h1>
+    <p>Simple HTML/JS UI to exercise the API Gateway.</p>
+  </header>
+
+  <section id="config">
+    <h2>Configuration</h2>
+    <label>
+      API Base URL
+      <input id="baseUrl" type="text" value="http://localhost:8080/v1" />
+    </label>
+    <label>
+      Auth Token
+      <input id="authToken" type="text" placeholder="Set automatically on login" />
+    </label>
+    <button id="clearTokenBtn" type="button">Clear Token</button>
+    <div class="info" id="currentUserInfo"></div>
+  </section>
+
+  <section id="auth" class="grid-2">
+    <div>
+      <h2>Register</h2>
+      <form id="registerForm">
+        <label>First Name<input name="firstName" required /></label>
+        <label>Last Name<input name="lastName" required /></label>
+        <label>Email<input name="email" type="email" required /></label>
+        <label>Password<input name="password" type="password" required /></label>
+        <button type="submit">Register</button>
+      </form>
+    </div>
+    <div>
+      <h2>Login</h2>
+      <form id="loginForm">
+        <label>Email<input name="email" type="email" required /></label>
+        <label>Password<input name="password" type="password" required /></label>
+        <button type="submit">Login</button>
+      </form>
+      <button id="meBtn" type="button">Get Current User (/users/me)</button>
+    </div>
+  </section>
+
+  <section id="events">
+    <h2>Events</h2>
+    <div class="grid-2">
+      <div>
+        <button id="listEventsBtn" type="button">List Events (/events)</button>
+      </div>
+      <div>
+        <h3>Create Event</h3>
+        <form id="createEventForm">
+          <label>Title<input name="title" required /></label>
+          <label>Description<textarea name="description" rows="2" required></textarea></label>
+          <label>Type<input name="eventType" value="CONFERENCE" required /></label>
+          <label>Venue<input name="venue" required /></label>
+          <label>City<input name="city" /></label>
+          <label>Country<input name="country" /></label>
+          <label>Capacity<input name="capacity" type="number" value="100" required /></label>
+          <label>Price<input name="price" type="number" step="0.01" value="0" required /></label>
+          <label>Start Date<input name="startDate" type="datetime-local" required /></label>
+          <label>End Date<input name="endDate" type="datetime-local" /></label>
+          <label>Organizer ID (defaults to logged-in user)<input name="organizerId" type="number" /></label>
+          <button type="submit">Create Event</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="reservations">
+    <h2>Reservations</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Create Reservation</h3>
+        <form id="createReservationForm">
+          <label>User ID (defaults to logged-in user)<input name="userId" type="number" /></label>
+          <label>Event ID<input name="eventId" type="number" required /></label>
+          <label>Quantity<input name="quantity" type="number" value="1" required /></label>
+          <button type="submit">Create Reservation</button>
+        </form>
+      </div>
+      <div>
+        <h3>Manage Reservations</h3>
+        <form id="userReservationsForm">
+          <label>User ID<input name="userId" type="number" /></label>
+          <button type="submit">Get User Reservations</button>
+        </form>
+        <form id="confirmReservationForm">
+          <label>Reservation ID<input name="reservationId" required /></label>
+          <button type="submit">Confirm Reservation</button>
+        </form>
+        <form id="cancelReservationForm">
+          <label>Reservation ID<input name="reservationId" required /></label>
+          <button type="submit">Cancel Reservation</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="payments">
+    <h2>Payments</h2>
+    <div class="grid-2">
+      <div>
+        <h3>Create Payment Intent</h3>
+        <form id="createPaymentIntentForm">
+          <label>Reservation ID<input name="reservationId" required /></label>
+          <label>User ID (defaults to logged-in user)<input name="userId" type="number" /></label>
+          <label>Amount<input name="amount" type="number" step="0.01" required /></label>
+          <label>Currency<input name="currency" value="USD" /></label>
+          <label>Payment Method<input name="paymentMethod" value="CARD" /></label>
+          <label>Description<input name="description" /></label>
+          <button type="submit">Create Payment Intent</button>
+        </form>
+      </div>
+      <div>
+        <h3>Payment Operations</h3>
+        <form id="capturePaymentForm">
+          <label>Intent ID<input name="intentId" required /></label>
+          <label>Idempotency Key (optional)<input name="idempotencyKey" /></label>
+          <button type="submit">Capture Payment</button>
+        </form>
+        <form id="getIntentForm">
+          <label>Intent ID<input name="intentId" required /></label>
+          <button type="submit">Get Payment Intent</button>
+        </form>
+        <form id="userPaymentsForm">
+          <label>User ID<input name="userId" type="number" /></label>
+          <button type="submit">Get User Payments</button>
+        </form>
+        <form id="userPaymentIntentsForm">
+          <label>User ID<input name="userId" type="number" /></label>
+          <button type="submit">Get User Payment Intents</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section id="generic">
+    <h2>Generic Request</h2>
+    <form id="genericRequestForm">
+      <label>Method
+        <select name="method">
+          <option>GET</option>
+          <option>POST</option>
+          <option>PUT</option>
+          <option>DELETE</option>
+        </select>
+      </label>
+      <label>Path (appended to base URL)<input name="path" placeholder="/events" required /></label>
+      <label>JSON Body (for POST/PUT)
+        <textarea name="body" rows="4" placeholder="{ }"></textarea>
+      </label>
+      <button type="submit">Send Request</button>
+    </form>
+  </section>
+
+  <section id="output">
+    <h2>Last Response</h2>
+    <pre id="responseBox"></pre>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
