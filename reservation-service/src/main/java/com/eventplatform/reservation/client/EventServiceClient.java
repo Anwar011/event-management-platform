@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 
 @ConditionalOnProperty(name = "feature.event-integration", havingValue = "true", matchIfMissing = false)
-@FeignClient(name = "event-service", url = "http://localhost:8082")
+@FeignClient(name = "event-service")
 public interface EventServiceClient {
 
     @GetMapping("/events/{eventId}/availability")

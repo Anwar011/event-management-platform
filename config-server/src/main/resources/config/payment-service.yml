@@ -50,4 +50,9 @@ payment:
   success-rate: 0.95         # 95% success rate for simulation
   max-retry-attempts: 3
 
+# Feature flags
+feature:
+  reservation-integration: true  # Enable reservation service integration
+
+
 

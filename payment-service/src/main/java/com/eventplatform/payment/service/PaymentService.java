@@ -28,7 +28,7 @@ public class PaymentService {
 
     private final PaymentIntentRepository paymentIntentRepository;
     private final PaymentRepository paymentRepository;
-    // private final ReservationServiceClient reservationServiceClient; // Conditionally available
+    private final Optional<ReservationServiceClient> reservationServiceClient;
 
     @Value("${feature.reservation-integration:true}")
     private boolean reservationServiceEnabled;
@@ -40,46 +40,46 @@ public class PaymentService {
      * Safely call Reservation Service with fallback for when service is unavailable
      */
     private Optional<ReservationServiceClient.ReservationResponse> getReservationSafely(String reservationId) {
-        if (!reservationServiceEnabled) {
-            log.warn("Reservation Service disabled, using default values for reservation {}", reservationId);
+        if (!reservationServiceEnabled || reservationServiceClient.isEmpty()) {
+            log.warn("Reservation Service disabled or unavailable, using default values for reservation {}",
+                    reservationId);
             return Optional.of(new ReservationServiceClient.ReservationResponse(
-                1L, reservationId, 1L, 1L, 1,
-                BigDecimal.valueOf(29.99), "PENDING", null,
-                LocalDateTime.now(), LocalDateTime.now()
-            ));
+                    1L, reservationId, 1L, 1L, 1,
+                    BigDecimal.valueOf(29.99), "PENDING", null,
+                    LocalDateTime.now(), LocalDateTime.now()));
         }
 
         try {
-            throw new RuntimeException("Reservation Service client not available - implement fallback");
+            ReservationServiceClient.ReservationResponse reservation = reservationServiceClient.get()
+                    .getReservation(reservationId);
+            return Optional.of(reservation);
         } catch (Exception e) {
             log.error("Failed to get reservation {} from Reservation Service, using defaults", reservationId, e);
             return Optional.of(new ReservationServiceClient.ReservationResponse(
-                1L, reservationId, 1L, 1L, 1,
-                BigDecimal.valueOf(29.99), "PENDING", null,
-                LocalDateTime.now(), LocalDateTime.now()
-            ));
+                    1L, reservationId, 1L, 1L, 1,
+                    BigDecimal.valueOf(29.99), "PENDING", null,
+                    LocalDateTime.now(), LocalDateTime.now()));
         }
     }
 
     private ReservationServiceClient.ReservationResponse confirmReservationSafely(String reservationId) {
-        if (!reservationServiceEnabled) {
-            log.warn("Reservation Service disabled, skipping reservation confirmation for {}", reservationId);
+        if (!reservationServiceEnabled || reservationServiceClient.isEmpty()) {
+            log.warn("Reservation Service disabled or unavailable, skipping reservation confirmation for {}",
+                    reservationId);
             return new ReservationServiceClient.ReservationResponse(
-                1L, reservationId, 1L, 1L, 1,
-                BigDecimal.valueOf(29.99), "CONFIRMED", null,
-                LocalDateTime.now(), LocalDateTime.now()
-            );
+                    1L, reservationId, 1L, 1L, 1,
+                    BigDecimal.valueOf(29.99), "CONFIRMED", null,
+                    LocalDateTime.now(), LocalDateTime.now());
         }
 
         try {
-            throw new RuntimeException("Reservation Service client not available - implement fallback");
+            return reservationServiceClient.get().confirmReservation(reservationId);
         } catch (Exception e) {
             log.error("Failed to confirm reservation {} in Reservation Service, assuming success", reservationId, e);
             return new ReservationServiceClient.ReservationResponse(
-                1L, reservationId, 1L, 1L, 1,
-                BigDecimal.valueOf(29.99), "CONFIRMED", null,
-                LocalDateTime.now(), LocalDateTime.now()
-            );
+                    1L, reservationId, 1L, 1L, 1,
+                    BigDecimal.valueOf(29.99), "CONFIRMED", null,
+                    LocalDateTime.now(), LocalDateTime.now());
         }
     }
 
@@ -88,17 +88,21 @@ public class PaymentService {
         log.info("Creating payment intent for reservation {} and user {} with amount {}",
                 request.getReservationId(), request.getUserId(), request.getAmount());
 
-        // Check idempotency - if idempotency key provided and already exists, return existing intent
+        // Check idempotency - if idempotency key provided and already exists, return
+        // existing intent
         if (request.getIdempotencyKey() != null) {
-            Optional<PaymentIntent> existing = paymentIntentRepository.findByIdempotencyKey(request.getIdempotencyKey());
+            Optional<PaymentIntent> existing = paymentIntentRepository
+                    .findByIdempotencyKey(request.getIdempotencyKey());
             if (existing.isPresent()) {
-                log.info("Idempotency key {} already exists, returning existing payment intent", request.getIdempotencyKey());
+                log.info("Idempotency key {} already exists, returning existing payment intent",
+                        request.getIdempotencyKey());
                 return mapIntentToResponse(existing.get());
             }
         }
 
         // Validate reservation exists and is in correct state
-        Optional<ReservationServiceClient.ReservationResponse> reservationOpt = getReservationSafely(request.getReservationId());
+        Optional<ReservationServiceClient.ReservationResponse> reservationOpt = getReservationSafely(
+                request.getReservationId());
         if (reservationOpt.isEmpty()) {
             throw new IllegalStateException("Reservation service unavailable for validation");
         }
@@ -107,8 +111,8 @@ public class PaymentService {
         // Verify amount matches reservation total
         if (reservation.totalPrice().compareTo(request.getAmount()) != 0) {
             throw new IllegalArgumentException(
-                String.format("Payment amount %.2f does not match reservation total %.2f",
-                    request.getAmount(), reservation.totalPrice()));
+                    String.format("Payment amount %.2f does not match reservation total %.2f",
+                            request.getAmount(), reservation.totalPrice()));
         }
 
         // Generate unique intent ID
@@ -163,8 +167,8 @@ public class PaymentService {
         }
 
         // Validate reservation is still valid
-        Optional<ReservationServiceClient.ReservationResponse> reservationOpt =
-            getReservationSafely(intent.getReservationId());
+        Optional<ReservationServiceClient.ReservationResponse> reservationOpt = getReservationSafely(
+                intent.getReservationId());
 
         if (reservationOpt.isEmpty()) {
             throw new IllegalStateException("Reservation service unavailable for validation");
@@ -288,12 +292,38 @@ public class PaymentService {
         paymentIntentRepository.saveAll(expiredIntents);
     }
 
+    @Transactional(readOnly = true)
+    public List<PaymentResponse> getAllPayments() {
+        log.info("Fetching all payments");
+        return paymentRepository.findAll().stream()
+                .map(this::mapPaymentToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public PaymentResponse updatePaymentStatus(String paymentId, String status) {
+        log.info("Updating payment {} status to: {}", paymentId, status);
+
+        Payment payment = paymentRepository.findByPaymentId(paymentId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+
+        // Update the status
+        if ("COMPLETED".equalsIgnoreCase(status) || "SUCCEEDED".equalsIgnoreCase(status)) {
+            payment.succeed();
+        } else if ("FAILED".equalsIgnoreCase(status)) {
+            payment.fail("Manually set to failed");
+        }
+
+        payment = paymentRepository.save(payment);
+        return mapPaymentToResponse(payment);
+    }
+
     // Validation is now done inline with safe fallbacks
 
     private boolean processPaymentSimulation() {
         // Simulate payment processing with configurable success rate
         try {
-            Thread.sleep(1000 + (long)(Math.random() * 2000)); // 1-3 second processing time
+            Thread.sleep(1000 + (long) (Math.random() * 2000)); // 1-3 second processing time
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

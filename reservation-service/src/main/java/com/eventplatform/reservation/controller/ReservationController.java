@@ -27,6 +27,13 @@ public class ReservationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @GetMapping
+    public ResponseEntity<List<ReservationResponse>> getAllReservations() {
+        log.info("Get all reservations request");
+        List<ReservationResponse> response = reservationService.getAllReservations();
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{reservationId}")
     public ResponseEntity<ReservationResponse> getReservation(@PathVariable String reservationId) {
         log.info("Get reservation request for: {}", reservationId);
@@ -38,6 +45,22 @@ public class ReservationController {
     public ResponseEntity<List<ReservationResponse>> getUserReservations(@PathVariable Long userId) {
         log.info("Get reservations request for user: {}", userId);
         List<ReservationResponse> response = reservationService.getUserReservations(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{reservationId}")
+    public ResponseEntity<ReservationResponse> updateReservation(
+            @PathVariable String reservationId,
+            @Valid @RequestBody CreateReservationRequest request) {
+        log.info("Update reservation request for: {}", reservationId);
+        ReservationResponse response = reservationService.updateReservation(reservationId, request);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{reservationId}")
+    public ResponseEntity<ReservationResponse> deleteReservation(@PathVariable String reservationId) {
+        log.info("Delete/Cancel reservation request for: {}", reservationId);
+        ReservationResponse response = reservationService.cancelReservation(reservationId);
         return ResponseEntity.ok(response);
     }
 
@@ -61,5 +84,4 @@ public class ReservationController {
         return ResponseEntity.ok("{\"service\":\"reservation-service\",\"status\":\"ok\"}");
     }
 }
-
 

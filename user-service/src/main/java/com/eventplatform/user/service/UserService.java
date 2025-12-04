@@ -2,6 +2,7 @@ package com.eventplatform.user.service;
 
 import com.eventplatform.user.dto.*;
 import com.eventplatform.user.entity.User;
+import com.eventplatform.user.exception.GlobalExceptionHandler;
 import com.eventplatform.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,10 +55,12 @@ public class UserService {
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+                .orElseThrow(() -> new com.eventplatform.user.exception.GlobalExceptionHandler.UnauthorizedException(
+                        "Invalid email or password"));
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new com.eventplatform.user.exception.GlobalExceptionHandler.UnauthorizedException(
+                    "Invalid email or password");
         }
 
         if (!"ACTIVE".equals(user.getStatus())) {
@@ -81,7 +84,8 @@ public class UserService {
 
     public UserResponse getUserById(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(
+                        () -> new GlobalExceptionHandler.ResourceNotFoundException("User not found with id: " + id));
 
         Set<String> roles = Set.of(user.getRole().name());
 
@@ -98,5 +102,55 @@ public class UserService {
     public UserResponse getCurrentUser(Long userId) {
         return getUserById(userId);
     }
-}
 
+    @Transactional(readOnly = true)
+    public java.util.List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(user -> UserResponse.builder()
+                        .id(user.getId())
+                        .email(user.getEmail())
+                        .firstName(user.getFirstName())
+                        .lastName(user.getLastName())
+                        .status(user.getStatus())
+                        .roles(Set.of(user.getRole().name()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public UserResponse updateUser(Long id, UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(
+                        () -> new GlobalExceptionHandler.ResourceNotFoundException("User not found with id: " + id));
+
+        if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        if (request.getFirstName() != null) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null) {
+            user.setLastName(request.getLastName());
+        }
+        if (request.getStatus() != null) {
+            user.setStatus(request.getStatus());
+        }
+
+        user = userRepository.save(user);
+        return getUserById(user.getId());
+    }
+
+    @Transactional
+    public void deleteUser(Long id) {
+        // Make DELETE idempotent - if user doesn't exist, just return success
+        if (!userRepository.existsById(id)) {
+            log.info("User {} already deleted or doesn't exist", id);
+            return;
+        }
+        userRepository.deleteById(id);
+    }
+}

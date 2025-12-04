@@ -21,8 +21,11 @@ public class PaymentController {
 
     private final PaymentService paymentService;
 
+    // === Modern Payment Intent API ===
+
     @PostMapping("/intents")
-    public ResponseEntity<PaymentIntentResponse> createPaymentIntent(@Valid @RequestBody CreatePaymentIntentRequest request) {
+    public ResponseEntity<PaymentIntentResponse> createPaymentIntent(
+            @Valid @RequestBody CreatePaymentIntentRequest request) {
         log.info("Create payment intent request for reservation: {}", request.getReservationId());
         PaymentIntentResponse response = paymentService.createPaymentIntent(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -44,13 +47,6 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{paymentId}")
-    public ResponseEntity<PaymentResponse> getPayment(@PathVariable String paymentId) {
-        log.info("Get payment request for: {}", paymentId);
-        PaymentResponse response = paymentService.getPayment(paymentId);
-        return ResponseEntity.ok(response);
-    }
-
     @GetMapping("/intents/user/{userId}")
     public ResponseEntity<List<PaymentIntentResponse>> getUserPaymentIntents(@PathVariable Long userId) {
         log.info("Get payment intents request for user: {}", userId);
@@ -58,10 +54,55 @@ public class PaymentController {
         return ResponseEntity.ok(response);
     }
 
+    // === Legacy/Backward Compatible API ===
+
+    @PostMapping
+    public ResponseEntity<PaymentResponse> createPayment(@Valid @RequestBody CreatePaymentIntentRequest request) {
+        log.info("Create payment (legacy) request for reservation: {}", request.getReservationId());
+        // Create intent and immediately capture
+        PaymentIntentResponse intent = paymentService.createPaymentIntent(request);
+        PaymentResponse response = paymentService.capturePayment(intent.getIntentId(), null);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PaymentResponse>> getAllPayments() {
+        log.info("Get all payments request");
+        List<PaymentResponse> response = paymentService.getAllPayments();
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{paymentId}")
+    public ResponseEntity<PaymentResponse> getPayment(@PathVariable String paymentId) {
+        log.info("Get payment request for: {}", paymentId);
+        PaymentResponse response = paymentService.getPayment(paymentId);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<PaymentResponse>> getUserPayments(@PathVariable Long userId) {
         log.info("Get payments request for user: {}", userId);
         List<PaymentResponse> response = paymentService.getUserPayments(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{paymentId}/status")
+    public ResponseEntity<PaymentResponse> updatePaymentStatus(
+            @PathVariable String paymentId,
+            @RequestBody java.util.Map<String, String> statusUpdate) {
+        log.info("Update payment status request for: {}", paymentId);
+        String status = statusUpdate.get("status");
+        PaymentResponse response = paymentService.updatePaymentStatus(paymentId, status);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{paymentId}/process")
+    public ResponseEntity<PaymentResponse> processPayment(
+            @PathVariable String paymentId,
+            @RequestBody(required = false) java.util.Map<String, Object> paymentDetails) {
+        log.info("Process payment request for: {}", paymentId);
+        // For backward compatibility, this is an alias for getting payment status
+        PaymentResponse response = paymentService.getPayment(paymentId);
         return ResponseEntity.ok(response);
     }
 
@@ -78,5 +119,4 @@ public class PaymentController {
         return ResponseEntity.ok("{\"service\":\"payment-service\",\"status\":\"ok\"}");
     }
 }
-
 

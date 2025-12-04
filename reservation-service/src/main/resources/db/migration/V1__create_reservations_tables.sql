@@ -42,3 +42,4 @@ SELECT r.id, 'STANDARD', r.quantity, r.total_price/r.quantity
 FROM reservations r;
 
 
+

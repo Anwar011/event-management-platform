@@ -6,9 +6,9 @@ import com.eventplatform.event.dto.EventSearchRequest;
 import com.eventplatform.event.dto.UpdateEventRequest;
 import com.eventplatform.event.entity.Event;
 import com.eventplatform.event.entity.EventCapacity;
+import com.eventplatform.event.exception.GlobalExceptionHandler.ResourceNotFoundException;
 import com.eventplatform.event.repository.EventCapacityRepository;
 import com.eventplatform.event.repository.EventRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -80,10 +80,10 @@ public class EventService {
         log.info("Fetching event: {}", eventId);
 
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Event not found: " + eventId));
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
 
         EventCapacity capacity = eventCapacityRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Event capacity not found: " + eventId));
+                .orElseThrow(() -> new ResourceNotFoundException("Event capacity not found: " + eventId));
 
         return mapToResponse(event, capacity);
     }
@@ -93,7 +93,7 @@ public class EventService {
         log.info("Updating event: {}", eventId);
 
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Event not found: " + eventId));
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
 
         // Only allow updates if event is not completed or cancelled
         if ("COMPLETED".equals(event.getStatus()) || "CANCELLED".equals(event.getStatus())) {
@@ -101,22 +101,33 @@ public class EventService {
         }
 
         // Update fields if provided
-        if (request.getTitle() != null) event.setTitle(request.getTitle());
-        if (request.getDescription() != null) event.setDescription(request.getDescription());
-        if (request.getEventType() != null) event.setEventType(request.getEventType());
-        if (request.getVenue() != null) event.setVenue(request.getVenue());
-        if (request.getAddress() != null) event.setAddress(request.getAddress());
-        if (request.getCity() != null) event.setCity(request.getCity());
-        if (request.getState() != null) event.setState(request.getState());
-        if (request.getCountry() != null) event.setCountry(request.getCountry());
-        if (request.getPostalCode() != null) event.setPostalCode(request.getPostalCode());
-        if (request.getStartDate() != null) event.setStartDate(request.getStartDate());
-        if (request.getEndDate() != null) event.setEndDate(request.getEndDate());
+        if (request.getTitle() != null)
+            event.setTitle(request.getTitle());
+        if (request.getDescription() != null)
+            event.setDescription(request.getDescription());
+        if (request.getEventType() != null)
+            event.setEventType(request.getEventType());
+        if (request.getVenue() != null)
+            event.setVenue(request.getVenue());
+        if (request.getAddress() != null)
+            event.setAddress(request.getAddress());
+        if (request.getCity() != null)
+            event.setCity(request.getCity());
+        if (request.getState() != null)
+            event.setState(request.getState());
+        if (request.getCountry() != null)
+            event.setCountry(request.getCountry());
+        if (request.getPostalCode() != null)
+            event.setPostalCode(request.getPostalCode());
+        if (request.getStartDate() != null)
+            event.setStartDate(request.getStartDate());
+        if (request.getEndDate() != null)
+            event.setEndDate(request.getEndDate());
 
         // Handle capacity updates carefully
         if (request.getCapacity() != null) {
             EventCapacity capacity = eventCapacityRepository.findById(eventId)
-                    .orElseThrow(() -> new EntityNotFoundException("Event capacity not found: " + eventId));
+                    .orElseThrow(() -> new ResourceNotFoundException("Event capacity not found: " + eventId));
 
             if (request.getCapacity() < capacity.getReservedCapacity()) {
                 throw new IllegalArgumentException("Cannot reduce capacity below reserved amount");
@@ -127,8 +138,10 @@ public class EventService {
             event.setCapacity(request.getCapacity());
         }
 
-        if (request.getPrice() != null) event.setPrice(request.getPrice());
-        if (request.getStatus() != null) event.setStatus(request.getStatus());
+        if (request.getPrice() != null)
+            event.setPrice(request.getPrice());
+        if (request.getStatus() != null)
+            event.setStatus(request.getStatus());
 
         event = eventRepository.save(event);
         EventCapacity capacity = eventCapacityRepository.findById(eventId).orElse(null);
@@ -141,8 +154,12 @@ public class EventService {
     public void deleteEvent(Long eventId) {
         log.info("Deleting event: {}", eventId);
 
-        Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Event not found: " + eventId));
+        // Make DELETE idempotent - if event doesn't exist, just return success
+        Event event = eventRepository.findById(eventId).orElse(null);
+        if (event == null) {
+            log.info("Event {} already deleted or doesn't exist", eventId);
+            return;
+        }
 
         // Only allow deletion of draft events
         if (!"DRAFT".equals(event.getStatus())) {
@@ -158,7 +175,7 @@ public class EventService {
         log.info("Publishing event: {}", eventId);
 
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new EntityNotFoundException("Event not found: " + eventId));
+                .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + eventId));
 
         if (!"DRAFT".equals(event.getStatus())) {
             throw new IllegalStateException("Only draft events can be published");
@@ -191,36 +208,38 @@ public class EventService {
         log.info("Searching events with filters: {}", request);
 
         String status = request.getStatus() != null ? request.getStatus() : "PUBLISHED";
-        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(), 
+        Pageable pageable = PageRequest.of(request.getPage(), request.getSize(),
                 Sort.by(Sort.Direction.ASC, "startDate"));
 
-        // Use simple query - filter by status first, then apply other filters in memory if needed
+        // Use simple query - filter by status first, then apply other filters in memory
+        // if needed
         // For now, just return published events with pagination
         Page<Event> eventsPage = eventRepository.findByStatusOrderByStartDateAsc(status, pageable);
 
         // Apply additional filters if provided (simple in-memory filtering for now)
         List<Event> filteredEvents = eventsPage.getContent().stream()
                 .filter(event -> {
-                    if (request.getCity() != null && !request.getCity().isEmpty() && 
-                        !event.getCity().equalsIgnoreCase(request.getCity())) {
+                    if (request.getCity() != null && !request.getCity().isEmpty() &&
+                            !event.getCity().equalsIgnoreCase(request.getCity())) {
                         return false;
                     }
-                    if (request.getEventType() != null && !request.getEventType().isEmpty() && 
-                        !event.getEventType().equalsIgnoreCase(request.getEventType())) {
+                    if (request.getEventType() != null && !request.getEventType().isEmpty() &&
+                            !event.getEventType().equalsIgnoreCase(request.getEventType())) {
                         return false;
                     }
                     if (request.getSearchTerm() != null && !request.getSearchTerm().isEmpty()) {
                         String searchLower = request.getSearchTerm().toLowerCase();
-                        if (!event.getTitle().toLowerCase().contains(searchLower) && 
-                            (event.getDescription() == null || !event.getDescription().toLowerCase().contains(searchLower))) {
+                        if (!event.getTitle().toLowerCase().contains(searchLower) &&
+                                (event.getDescription() == null
+                                        || !event.getDescription().toLowerCase().contains(searchLower))) {
                             return false;
                         }
                     }
                     if (request.getStartDate() != null && event.getStartDate().isBefore(request.getStartDate())) {
                         return false;
                     }
-                    if (request.getEndDate() != null && event.getEndDate() != null && 
-                        event.getEndDate().isAfter(request.getEndDate())) {
+                    if (request.getEndDate() != null && event.getEndDate() != null &&
+                            event.getEndDate().isAfter(request.getEndDate())) {
                         return false;
                     }
                     return true;
@@ -231,7 +250,7 @@ public class EventService {
         int start = (int) pageable.getOffset();
         int end = Math.min((start + pageable.getPageSize()), filteredEvents.size());
         List<Event> pagedEvents = filteredEvents.subList(Math.min(start, filteredEvents.size()), end);
-        
+
         Page<Event> resultPage = new PageImpl<>(pagedEvents, pageable, filteredEvents.size());
 
         return resultPage.map(event -> {
@@ -251,7 +270,7 @@ public class EventService {
 
         EventCapacity capacity = eventCapacityRepository.findByEventIdWithLock(eventId);
         if (capacity == null) {
-            throw new EntityNotFoundException("Event capacity not found: " + eventId);
+            throw new ResourceNotFoundException("Event capacity not found: " + eventId);
         }
 
         boolean success = capacity.reserveCapacity(quantity);

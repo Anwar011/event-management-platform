@@ -48,4 +48,9 @@ logging:
 reservation:
   max-tickets-per-user-per-event: 4
 
+# Feature flags
+feature:
+  event-integration: true  # Enable full service integration
+
+
 

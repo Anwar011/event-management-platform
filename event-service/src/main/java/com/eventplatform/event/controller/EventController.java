@@ -25,6 +25,12 @@ public class EventController {
 
     private final EventService eventService;
 
+    @GetMapping("/ping")
+    public ResponseEntity<String> ping() {
+        log.info("Event Service ping endpoint called");
+        return ResponseEntity.ok("Event Service is running");
+    }
+
     @PostMapping
     public ResponseEntity<EventResponse> createEvent(@Valid @RequestBody CreateEventRequest request) {
         log.info("Create event request received");
@@ -52,7 +58,7 @@ public class EventController {
     public ResponseEntity<Void> deleteEvent(@PathVariable Long eventId) {
         log.info("Delete event request for ID: {}", eventId);
         eventService.deleteEvent(eventId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{eventId}/publish")
@@ -95,6 +101,39 @@ public class EventController {
         request.setSortDirection(sortDirection);
 
         log.info("Search events request with filters: {}", request);
+        Page<EventResponse> response = eventService.searchEvents(request);
+        return ResponseEntity.ok(response);
+    }
+
+    // Dedicated search endpoint for backward compatibility (keyword parameter)
+    @GetMapping("/search")
+    public ResponseEntity<Page<EventResponse>> searchEventsByKeyword(
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String eventType,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "startDate") String sortBy,
+            @RequestParam(defaultValue = "ASC") String sortDirection) {
+
+        EventSearchRequest request = new EventSearchRequest();
+        // Use keyword if provided, otherwise use searchTerm
+        request.setSearchTerm(keyword != null ? keyword : searchTerm);
+        request.setCity(city);
+        request.setEventType(eventType);
+        request.setStatus(status);
+        request.setStartDate(startDate);
+        request.setEndDate(endDate);
+        request.setPage(page);
+        request.setSize(size);
+        request.setSortBy(sortBy);
+        request.setSortDirection(sortDirection);
+
+        log.info("Search events request (keyword API) with filters: {}", request);
         Page<EventResponse> response = eventService.searchEvents(request);
         return ResponseEntity.ok(response);
     }
@@ -151,4 +190,3 @@ public class EventController {
         private String message;
     }
 }
-

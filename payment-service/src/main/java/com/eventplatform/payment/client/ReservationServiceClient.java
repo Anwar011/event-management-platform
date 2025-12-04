@@ -5,7 +5,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
 @ConditionalOnProperty(name = "feature.reservation-integration", havingValue = "true", matchIfMissing = false)
-@FeignClient(name = "reservation-service", url = "http://localhost:8083")
+@FeignClient(name = "reservation-service")
 public interface ReservationServiceClient {
 
     @GetMapping("/reservations/{reservationId}")
