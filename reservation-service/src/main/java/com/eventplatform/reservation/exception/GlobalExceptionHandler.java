@@ -43,6 +43,18 @@ public class GlobalExceptionHandler {
                 "message", ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidationExceptions(
+            org.springframework.web.bind.MethodArgumentNotValidException ex) {
+        log.error("Validation error: {}", ex.getMessage());
+        String message = ex.getBindingResult().getAllErrors().get(0).getDefaultMessage();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "timestamp", LocalDateTime.now(),
+                "status", 400,
+                "error", "Bad Request",
+                "message", message != null ? message : "Validation failed"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         log.error("Internal server error: ", ex);

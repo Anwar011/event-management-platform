@@ -6,6 +6,7 @@ import com.eventplatform.payment.dto.PaymentIntentResponse;
 import com.eventplatform.payment.dto.PaymentResponse;
 import com.eventplatform.payment.entity.Payment;
 import com.eventplatform.payment.entity.PaymentIntent;
+import com.eventplatform.payment.exception.GlobalExceptionHandler;
 import com.eventplatform.payment.repository.PaymentIntentRepository;
 import com.eventplatform.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
@@ -143,7 +144,8 @@ public class PaymentService {
         log.info("Capturing payment for intent: {}", intentId);
 
         PaymentIntent intent = paymentIntentRepository.findByIntentId(intentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment intent not found: " + intentId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException(
+                        "Payment intent not found: " + intentId));
 
         // Check idempotency for capture operation
         if (idempotencyKey != null) {
@@ -242,7 +244,8 @@ public class PaymentService {
         log.info("Fetching payment intent: {}", intentId);
 
         PaymentIntent intent = paymentIntentRepository.findByIntentId(intentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment intent not found: " + intentId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException(
+                        "Payment intent not found: " + intentId));
 
         return mapIntentToResponse(intent);
     }
@@ -252,7 +255,8 @@ public class PaymentService {
         log.info("Fetching payment: {}", paymentId);
 
         Payment payment = paymentRepository.findByPaymentId(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+                .orElseThrow(
+                        () -> new GlobalExceptionHandler.ResourceNotFoundException("Payment not found: " + paymentId));
 
         return mapPaymentToResponse(payment);
     }
@@ -305,7 +309,8 @@ public class PaymentService {
         log.info("Updating payment {} status to: {}", paymentId, status);
 
         Payment payment = paymentRepository.findByPaymentId(paymentId)
-                .orElseThrow(() -> new IllegalArgumentException("Payment not found: " + paymentId));
+                .orElseThrow(
+                        () -> new GlobalExceptionHandler.ResourceNotFoundException("Payment not found: " + paymentId));
 
         // Update the status
         if ("COMPLETED".equalsIgnoreCase(status) || "SUCCEEDED".equalsIgnoreCase(status)) {

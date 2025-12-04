@@ -7,6 +7,7 @@ import com.eventplatform.reservation.dto.ReservationItemResponse;
 import com.eventplatform.reservation.dto.ReservationResponse;
 import com.eventplatform.reservation.entity.Reservation;
 import com.eventplatform.reservation.entity.ReservationItem;
+import com.eventplatform.reservation.exception.GlobalExceptionHandler;
 import com.eventplatform.reservation.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -185,7 +186,8 @@ public class ReservationService {
         log.info("Fetching reservation: {}", reservationId);
 
         Reservation reservation = reservationRepository.findByReservationId(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found: " + reservationId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException(
+                        "Reservation not found: " + reservationId));
 
         return mapToResponse(reservation);
     }
@@ -213,7 +215,8 @@ public class ReservationService {
         log.info("Updating reservation: {}", reservationId);
 
         Reservation reservation = reservationRepository.findByReservationId(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found: " + reservationId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException(
+                        "Reservation not found: " + reservationId));
 
         if (!reservation.isPending()) {
             throw new IllegalStateException("Only pending reservations can be updated");
@@ -254,7 +257,8 @@ public class ReservationService {
         log.info("Confirming reservation: {}", reservationId);
 
         Reservation reservation = reservationRepository.findByReservationId(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found: " + reservationId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException(
+                        "Reservation not found: " + reservationId));
 
         if (!reservation.isPending()) {
             throw new IllegalStateException("Only pending reservations can be confirmed");
@@ -272,7 +276,8 @@ public class ReservationService {
         log.info("Cancelling reservation: {}", reservationId);
 
         Reservation reservation = reservationRepository.findByReservationId(reservationId)
-                .orElseThrow(() -> new IllegalArgumentException("Reservation not found: " + reservationId));
+                .orElseThrow(() -> new GlobalExceptionHandler.ResourceNotFoundException(
+                        "Reservation not found: " + reservationId));
 
         if (reservation.isCancelled()) {
             throw new IllegalStateException("Reservation is already cancelled");
