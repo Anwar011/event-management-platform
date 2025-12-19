@@ -73,9 +73,10 @@ else
 fi
 
 # Test User Registration (may fail if user exists)
+TEST_EMAIL="test-final-$(date +%s)@example.com"
 register_response=$(curl -s -X POST "$API_BASE/v1/auth/register" \
     -H "Content-Type: application/json" \
-    -d '{"email":"test-final-'$(date +%s)'@example.com","password":"password123","firstName":"Test","lastName":"Final"}' \
+    -d '{"email":"'$TEST_EMAIL'","password":"password123","firstName":"Test","lastName":"Final"}' \
     -w "%{http_code}" -o /dev/null)
 
 if [ "$register_response" -eq 200 ] || [ "$register_response" -eq 201 ]; then
@@ -89,7 +90,7 @@ fi
 # Test User Login
 login_response=$(curl -s -X POST "$API_BASE/v1/auth/login" \
     -H "Content-Type: application/json" \
-    -d '{"email":"test@example.com","password":"password123"}')
+    -d '{"email":"'$TEST_EMAIL'","password":"password123"}')
 
 token=$(echo "$login_response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 if [ -n "$token" ]; then
@@ -151,3 +152,5 @@ echo "✅ Security: JWT authentication, service communication"
 echo "✅ Service Discovery: All microservices registered"
 echo ""
 echo "🚀 EventHub Backend is fully operational!"
+
+

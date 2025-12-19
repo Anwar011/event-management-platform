@@ -8,13 +8,13 @@ spring:
     config:
       enabled: true
   datasource:
-    url: jdbc:postgresql://localhost:5432/eventdb
+    url: jdbc:postgresql://localhost:5433/eventdb
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -44,6 +44,8 @@ logging:
     json: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%level","logger":"%logger{36}","message":"%msg","traceId":"%X{correlationId}"}'
   level:
     com.eventplatform: INFO
+
+
 
 
 

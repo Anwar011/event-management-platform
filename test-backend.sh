@@ -220,3 +220,5 @@ echo "- CORS configuration"
 echo "- Service discovery"
 
 echo -e "\n${GREEN}🎉 All backend services have been tested!${NC}"
+
+

@@ -48,3 +48,5 @@ SELECT id, capacity, 0 FROM events;
 
 
 
+
+

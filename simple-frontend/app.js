@@ -4,8 +4,18 @@
   const clearTokenBtn = document.getElementById('clearTokenBtn');
   const responseBox = document.getElementById('responseBox');
   const currentUserInfo = document.getElementById('currentUserInfo');
+  const wfUserId = document.getElementById('wfUserId');
+  const wfEventId = document.getElementById('wfEventId');
+  const wfReservationId = document.getElementById('wfReservationId');
+  const wfIntentId = document.getElementById('wfIntentId');
+  const wfPaymentId = document.getElementById('wfPaymentId');
 
   let currentUser = null;
+
+  function setWorkflowValue(el, value) {
+    if (!el || value === undefined || value === null || value === '') return;
+    el.textContent = String(value);
+  }
 
   function getBaseUrl() {
     return baseUrlInput.value.replace(/\/$/, '');
@@ -19,9 +29,12 @@
   function setCurrentUser(user) {
     currentUser = user;
     if (user) {
-      currentUserInfo.textContent = `Logged in as ${user.email} (ID: ${user.userId || user.id || 'n/a'})`;
+      const id = user.userId || user.id;
+      currentUserInfo.textContent = `Logged in as ${user.email} (ID: ${id || 'n/a'})`;
+      setWorkflowValue(wfUserId, id);
     } else {
       currentUserInfo.textContent = '';
+      setWorkflowValue(wfUserId, '-');
     }
   }
 
@@ -114,7 +127,10 @@
   // Events
   document.getElementById('listEventsBtn').addEventListener('click', async () => {
     try {
-      await apiRequest('GET', '/events?page=0&size=20');
+      const data = await apiRequest('GET', '/events?page=0&size=20');
+      if (data && Array.isArray(data.content) && data.content.length > 0) {
+        setWorkflowValue(wfEventId, data.content[0].id);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -139,7 +155,10 @@
       organizerId: organizerId ? Number(organizerId) : 1,
     };
     try {
-      await apiRequest('POST', '/events', body);
+      const data = await apiRequest('POST', '/events', body);
+      if (data && (data.id !== undefined || data.eventId !== undefined)) {
+        setWorkflowValue(wfEventId, data.id ?? data.eventId);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -149,15 +168,27 @@
   document.getElementById('createReservationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const userId = form.userId.value || (currentUser && (currentUser.userId || currentUser.id));
+    const rawUserId = form.userId.value || (currentUser && (currentUser.userId || currentUser.id));
+    if (!rawUserId) {
+      alert('User ID is required (login or fill the field).');
+      return;
+    }
+    const rawEventId = form.eventId.value || (wfEventId && wfEventId.textContent !== '-' ? wfEventId.textContent : '');
+    if (!rawEventId) {
+      alert('Event ID is required (create event first or fill the field).');
+      return;
+    }
     const body = {
-      userId: Number(userId),
-      eventId: Number(form.eventId.value),
+      userId: Number(rawUserId),
+      eventId: Number(rawEventId),
       quantity: Number(form.quantity.value || 1),
       idempotencyKey: `simple-ui-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     };
     try {
-      await apiRequest('POST', '/reservations', body);
+      const data = await apiRequest('POST', '/reservations', body);
+      if (data && (data.reservationId || data.id)) {
+        setWorkflowValue(wfReservationId, data.reservationId || data.id);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -178,8 +209,14 @@
   document.getElementById('confirmReservationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const id = form.reservationId.value.trim();
-    if (!id) return;
+    let id = form.reservationId.value.trim();
+    if (!id && wfReservationId && wfReservationId.textContent !== '-') {
+      id = wfReservationId.textContent.trim();
+    }
+    if (!id) {
+      alert('Reservation ID is required (create reservation first or fill the field).');
+      return;
+    }
     try {
       await apiRequest('POST', `/reservations/${encodeURIComponent(id)}/confirm`);
     } catch (err) {
@@ -190,8 +227,14 @@
   document.getElementById('cancelReservationForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const id = form.reservationId.value.trim();
-    if (!id) return;
+    let id = form.reservationId.value.trim();
+    if (!id && wfReservationId && wfReservationId.textContent !== '-') {
+      id = wfReservationId.textContent.trim();
+    }
+    if (!id) {
+      alert('Reservation ID is required (create reservation first or fill the field).');
+      return;
+    }
     try {
       await apiRequest('POST', `/reservations/${encodeURIComponent(id)}/cancel`);
     } catch (err) {
@@ -203,10 +246,22 @@
   document.getElementById('createPaymentIntentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const userId = form.userId.value || (currentUser && (currentUser.userId || currentUser.id));
+    const rawUserId = form.userId.value || (currentUser && (currentUser.userId || currentUser.id));
+    if (!rawUserId) {
+      alert('User ID is required (login or fill the field).');
+      return;
+    }
+    let reservationId = form.reservationId.value.trim();
+    if (!reservationId && wfReservationId && wfReservationId.textContent !== '-') {
+      reservationId = wfReservationId.textContent.trim();
+    }
+    if (!reservationId) {
+      alert('Reservation ID is required (create reservation first or fill field).');
+      return;
+    }
     const body = {
-      reservationId: form.reservationId.value.trim(),
-      userId: Number(userId),
+      reservationId,
+      userId: Number(rawUserId),
       amount: Number(form.amount.value),
       currency: form.currency.value.trim() || undefined,
       paymentMethod: form.paymentMethod.value.trim() || undefined,
@@ -214,7 +269,10 @@
       idempotencyKey: `simple-ui-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     };
     try {
-      await apiRequest('POST', '/payments/intents', body);
+      const data = await apiRequest('POST', '/payments/intents', body);
+      if (data && (data.intentId || data.id)) {
+        setWorkflowValue(wfIntentId, data.intentId || data.id);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -223,12 +281,21 @@
   document.getElementById('capturePaymentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
-    const intentId = form.intentId.value.trim();
-    if (!intentId) return;
+    let intentId = form.intentId.value.trim();
+    if (!intentId && wfIntentId && wfIntentId.textContent !== '-') {
+      intentId = wfIntentId.textContent.trim();
+    }
+    if (!intentId) {
+      alert('Intent ID is required (create payment intent first or fill field).');
+      return;
+    }
     const key = form.idempotencyKey.value.trim();
     const query = key ? `?idempotencyKey=${encodeURIComponent(key)}` : '';
     try {
-      await apiRequest('POST', `/payments/intents/${encodeURIComponent(intentId)}/capture${query}`);
+      const data = await apiRequest('POST', `/payments/intents/${encodeURIComponent(intentId)}/capture${query}`);
+      if (data && (data.paymentId || data.id)) {
+        setWorkflowValue(wfPaymentId, data.paymentId || data.id);
+      }
     } catch (err) {
       console.error(err);
     }

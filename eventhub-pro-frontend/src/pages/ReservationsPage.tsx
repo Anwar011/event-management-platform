@@ -1,5 +1,5 @@
-import React from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../contexts/AuthContext'
 import apiService from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -7,6 +7,8 @@ import { Link } from 'react-router-dom'
 
 const ReservationsPage: React.FC = () => {
   const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const [processingPayment, setProcessingPayment] = useState<string | null>(null)
 
   const { data: reservations, isLoading, error } = useQuery({
     queryKey: ['reservations', user?.id],
@@ -18,11 +20,54 @@ const ReservationsPage: React.FC = () => {
     if (window.confirm('Are you sure you want to cancel this reservation?')) {
       try {
         await apiService.cancelReservation(reservationId)
-        // Refetch reservations
-        window.location.reload()
+        queryClient.invalidateQueries({ queryKey: ['reservations', user?.id] })
       } catch (error) {
         alert('Failed to cancel reservation. Please try again.')
       }
+    }
+  }
+
+  const handlePayReservation = async (reservation: any) => {
+    if (!user) {
+      alert('User information not available')
+      return
+    }
+
+    if (!window.confirm(`Pay $${reservation.totalPrice || reservation.totalAmount} for this reservation?`)) {
+      return
+    }
+
+    setProcessingPayment(reservation.reservationId)
+
+    try {
+      // Step 1: Create payment intent
+      const paymentIntent = await apiService.createPaymentIntent({
+        reservationId: reservation.reservationId,
+        userId: user.id,
+        amount: reservation.totalPrice || reservation.totalAmount,
+        currency: 'USD',
+        paymentMethod: 'CARD',
+        description: `Payment for reservation ${reservation.reservationId}`,
+        idempotencyKey: `pay-${reservation.reservationId}-${Date.now()}`
+      })
+
+      // Step 2: Capture payment (process it)
+      const payment = await apiService.capturePayment(paymentIntent.intentId)
+
+      if (payment.status === 'SUCCEEDED') {
+        alert(`Payment successful! Payment ID: ${payment.paymentId}`)
+        // Refresh reservations and payments
+        queryClient.invalidateQueries({ queryKey: ['reservations', user.id] })
+        queryClient.invalidateQueries({ queryKey: ['payments', user.id] })
+        queryClient.invalidateQueries({ queryKey: ['payment-intents', user.id] })
+      } else {
+        alert(`Payment failed: ${payment.failureReason || 'Unknown error'}`)
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error)
+      alert(`Payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`)
+    } finally {
+      setProcessingPayment(null)
     }
   }
 
@@ -68,8 +113,9 @@ const ReservationsPage: React.FC = () => {
                   <div className="grid md:grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-600"><span className="font-medium">Event ID:</span> {reservation.eventId}</p>
-                      <p className="text-gray-600"><span className="font-medium">Attendees:</span> {reservation.attendeeCount}</p>
-                      <p className="text-gray-600"><span className="font-medium">Total Amount:</span> ${reservation.totalAmount}</p>
+                      <p className="text-gray-600"><span className="font-medium">Attendees:</span> {reservation.quantity || reservation.attendeeCount || 1}</p>
+                      <p className="text-gray-600"><span className="font-medium">Total Amount:</span> ${(reservation.totalPrice || reservation.totalAmount || 0).toFixed(2)}</p>
+                      <p className="text-gray-600"><span className="font-medium">Reservation ID:</span> {reservation.reservationId}</p>
                     </div>
                     <div>
                       <p className="text-gray-600"><span className="font-medium">Status:</span> 
@@ -94,7 +140,7 @@ const ReservationsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <div className="flex space-x-2 ml-4">
+                <div className="flex flex-col space-y-2 ml-4">
                   <Link 
                     to={`/events/${reservation.eventId}`} 
                     className="btn btn-secondary text-sm"
@@ -102,12 +148,42 @@ const ReservationsPage: React.FC = () => {
                     View Event
                   </Link>
                   {reservation.status === 'PENDING' && (
-                    <button
-                      onClick={() => handleCancelReservation(reservation.id)}
-                      className="btn bg-red-600 text-white hover:bg-red-700 text-sm"
-                    >
-                      Cancel
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handlePayReservation(reservation)}
+                        disabled={processingPayment === reservation.reservationId}
+                        className={`btn text-sm ${
+                          processingPayment === reservation.reservationId
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                      >
+                        {processingPayment === reservation.reservationId ? (
+                          <>
+                            <div className="spinner mr-2"></div>
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Pay Now
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleCancelReservation(reservation.reservationId)}
+                        className="btn bg-red-600 text-white hover:bg-red-700 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  {reservation.status === 'CONFIRMED' && (
+                    <span className="text-sm text-green-600 font-medium">
+                      ✓ Paid
+                    </span>
                   )}
                 </div>
               </div>

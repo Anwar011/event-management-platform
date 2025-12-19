@@ -8,26 +8,58 @@ import { Link } from 'react-router-dom'
 const PaymentsPage: React.FC = () => {
   const { user } = useAuth()
 
-  const { data: payments, isLoading: paymentsLoading } = useQuery({
+  const { data: payments, isLoading: paymentsLoading, error: paymentsError } = useQuery({
     queryKey: ['payments', user?.id],
     queryFn: () => user ? apiService.getUserPayments(user.id) : Promise.resolve([]),
     enabled: !!user?.id,
+    onError: (error) => {
+      console.error('Error fetching payments:', error)
+    },
+    onSuccess: (data) => {
+      console.log('Payments fetched successfully:', data)
+    }
   })
 
-  const { data: paymentIntents, isLoading: intentsLoading } = useQuery({
+  const { data: paymentIntents, isLoading: intentsLoading, error: intentsError } = useQuery({
     queryKey: ['payment-intents', user?.id],
     queryFn: () => user ? apiService.getUserPaymentIntents(user.id) : Promise.resolve([]),
     enabled: !!user?.id,
+    onError: (error) => {
+      console.error('Error fetching payment intents:', error)
+    },
+    onSuccess: (data) => {
+      console.log('Payment intents fetched successfully:', data)
+    }
   })
 
   const isLoading = paymentsLoading || intentsLoading
 
   if (isLoading) return <LoadingSpinner />
 
+  // Debug logging
+  console.log('User ID:', user?.id)
+  console.log('Payments data:', payments)
+  console.log('Payment Intents data:', paymentIntents)
+  console.log('Payments error:', paymentsError)
+  console.log('Intents error:', intentsError)
+
   const allTransactions = [
     ...(payments || []).map(p => ({ ...p, type: 'payment' })),
     ...(paymentIntents || []).map(p => ({ ...p, type: 'intent' }))
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  ].sort((a, b) => new Date(b.createdAt || b.created_at || 0).getTime() - new Date(a.createdAt || a.created_at || 0).getTime())
+
+  console.log('All transactions:', allTransactions)
+  console.log('Completed count:', allTransactions.filter(t => 
+    t.status === 'SUCCEEDED' || 
+    t.status === 'COMPLETED' || 
+    t.status === 'CAPTURED'
+  ).length)
+  console.log('Pending count:', allTransactions.filter(t => 
+    t.status === 'PENDING' || 
+    t.status === 'CREATED' || 
+    t.status === 'REQUIRES_PAYMENT_METHOD' ||
+    t.status === 'PROCESSING'
+  ).length)
 
   return (
     <div>
@@ -35,8 +67,29 @@ const PaymentsPage: React.FC = () => {
         <h1 className="text-3xl font-bold">Payment History</h1>
         <div className="text-sm text-gray-600">
           Total Transactions: {allTransactions.length}
+          {user && (
+            <span className="ml-2 text-blue-600 font-medium">
+              (User ID: {user.id})
+            </span>
+          )}
         </div>
       </div>
+      
+      {!user && (
+        <div className="card mb-4 bg-red-50 border border-red-200">
+          <p className="text-red-800 text-sm">
+            ⚠️ No user logged in. Please login to view payment history.
+          </p>
+        </div>
+      )}
+      
+      {(paymentsError || intentsError) && (
+        <div className="card mb-4 bg-yellow-50 border border-yellow-200">
+          <p className="text-yellow-800 text-sm">
+            ⚠️ Some payment data could not be loaded. Check browser console for details.
+          </p>
+        </div>
+      )}
       
       {allTransactions.length === 0 ? (
         <div className="card text-center">
@@ -60,12 +113,12 @@ const PaymentsPage: React.FC = () => {
                       {transaction.type === 'payment' ? 'Payment' : 'Payment Intent'} #{transaction.id}
                     </h3>
                     <span className={`px-3 py-1 text-sm rounded-full ${
-                      transaction.status === 'COMPLETED' || transaction.status === 'CAPTURED' ? 'bg-green-100 text-green-800' :
-                      transaction.status === 'PENDING' || transaction.status === 'CREATED' ? 'bg-yellow-100 text-yellow-800' :
-                      transaction.status === 'FAILED' || transaction.status === 'CANCELLED' ? 'bg-red-100 text-red-800' :
+                      transaction.status === 'SUCCEEDED' || transaction.status === 'COMPLETED' || transaction.status === 'CAPTURED' ? 'bg-green-100 text-green-800' :
+                      transaction.status === 'PENDING' || transaction.status === 'CREATED' || transaction.status === 'REQUIRES_PAYMENT_METHOD' || transaction.status === 'PROCESSING' ? 'bg-yellow-100 text-yellow-800' :
+                      transaction.status === 'FAILED' || transaction.status === 'CANCELLED' || transaction.status === 'CANCELED' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      {transaction.status}
+                      {transaction.status || 'UNKNOWN'}
                     </span>
                   </div>
                   
@@ -112,38 +165,93 @@ const PaymentsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Payment Summary Stats */}
-      {allTransactions.length > 0 && (
-        <div className="mt-8 card">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Summary</h3>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {allTransactions.filter(t => t.status === 'COMPLETED' || t.status === 'CAPTURED').length}
-              </div>
-              <div className="text-sm text-gray-600">Completed Payments</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {allTransactions.filter(t => t.status === 'PENDING' || t.status === 'CREATED').length}
-              </div>
-              <div className="text-sm text-gray-600">Pending Payments</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                $
-                {allTransactions
-                  .filter(t => t.status === 'COMPLETED' || t.status === 'CAPTURED')
-                  .reduce((sum, t) => sum + t.amount, 0)
-                  .toFixed(2)}
-              </div>
-              <div className="text-sm text-gray-600">Total Paid</div>
-            </div>
-          </div>
+      {/* Payment Summary Stats - Always show */}
+      <div className="mt-8 card">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Payment Summary</h3>
+          {user && (
+            <span className="text-xs text-gray-500">
+              Fetching data for User ID: {user.id}
+            </span>
+          )}
         </div>
-      )}
+        {(() => {
+          // Calculate statistics
+          const completedPayments = allTransactions.filter(t => {
+            const status = String(t.status || '').toUpperCase()
+            return status === 'SUCCEEDED' || status === 'COMPLETED' || status === 'CAPTURED'
+          })
+          
+          const pendingPayments = allTransactions.filter(t => {
+            const status = String(t.status || '').toUpperCase()
+            return status === 'PENDING' || 
+                   status === 'CREATED' || 
+                   status === 'REQUIRES_PAYMENT_METHOD' ||
+                   status === 'PROCESSING' ||
+                   status === 'REQUIRES_ACTION' ||
+                   status === 'REQUIRES_CONFIRMATION'
+          })
+          
+          const totalPaid = completedPayments.reduce((sum, t) => {
+            const amount = typeof t.amount === 'number' ? t.amount : parseFloat(String(t.amount || 0))
+            return sum + (isNaN(amount) ? 0 : amount)
+          }, 0)
+          
+          console.log('Summary calculation:', {
+            totalTransactions: allTransactions.length,
+            completed: completedPayments.length,
+            pending: pendingPayments.length,
+            totalPaid,
+            allStatuses: allTransactions.map(t => ({ id: t.id, status: t.status, amount: t.amount }))
+          })
+          
+          return (
+            <div className="grid md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {completedPayments.length}
+                </div>
+                <div className="text-sm text-gray-600">Completed Payments</div>
+                {completedPayments.length > 0 && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {completedPayments.map(p => p.status).join(', ')}
+                  </div>
+                )}
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {pendingPayments.length}
+                </div>
+                <div className="text-sm text-gray-600">Pending Payments</div>
+                {pendingPayments.length > 0 && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    {pendingPayments.map(p => p.status).join(', ')}
+                  </div>
+                )}
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  ${totalPaid.toFixed(2)}
+                </div>
+                <div className="text-sm text-gray-600">Total Paid</div>
+              </div>
+            </div>
+          )
+        })()}
+        
+        {/* Debug info - remove in production */}
+        {process.env.NODE_ENV === 'development' && allTransactions.length > 0 && (
+          <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
+            <p className="font-medium mb-1">Debug Info:</p>
+            <p>Total transactions: {allTransactions.length}</p>
+            <p>Payments: {payments?.length || 0}, Intents: {paymentIntents?.length || 0}</p>
+            <p>Statuses: {allTransactions.map(t => t.status).join(', ')}</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
 
 export default PaymentsPage
+

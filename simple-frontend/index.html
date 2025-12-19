@@ -48,6 +48,26 @@
     </div>
   </section>
 
+  <section id="workflow">
+    <h2>Workflow status</h2>
+    <p>Follow this order: register/login -> create event -> create reservation -> create payment intent -> capture payment.</p>
+    <div class="grid-2">
+      <div>
+        <strong>User ID:</strong> <span id="wfUserId">-</span><br />
+        <strong>Last Event ID:</strong> <span id="wfEventId">-</span><br />
+        <strong>Last Reservation ID:</strong> <span id="wfReservationId">-</span><br />
+        <strong>Last Intent ID:</strong> <span id="wfIntentId">-</span><br />
+        <strong>Last Payment ID:</strong> <span id="wfPaymentId">-</span>
+      </div>
+      <div>
+        <p style="font-size:0.9rem;color:#9ca3af;">
+          After each step, IDs from the response are stored here and reused by the next forms
+          (for example, reservation ID for payments).
+        </p>
+      </div>
+    </div>
+  </section>
+
   <section id="events">
     <h2>Events</h2>
     <div class="grid-2">
