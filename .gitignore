@@ -114,8 +114,24 @@ temp/
 *.dylib
 *.dll
 
-# Keep test scripts - they're useful for the project
-# test-*.sh (keep these)
+# Test scripts (not needed for execution)
+test-*.sh
+*-test.sh
+
+# Testing and debug documentation (not needed for execution)
+*_TESTING*.md
+*_DEBUG*.md
+*_TEST.md
+GITIGNORE_SUMMARY.md
+
+# Personal interview/documentation files
+preparation_entretien.*
+questions_generales_narratives.*
+reponses_orales_entretien.*
+description_complete_projet.*
+
+# Simple test frontend (not the main frontend)
+simple-frontend/
 
 
 
