@@ -21,7 +21,7 @@ This platform follows a microservices architecture with the following components
 ### Frontend
 - **React Frontend** (Port 3001): Modern React application with TypeScript, Vite, and Tailwind CSS
 
-### Shared Components
+### Shared Components.
 - **Common Library**: Shared DTOs, error models, and utilities
 
 ## 🛠️ Technology Stack
