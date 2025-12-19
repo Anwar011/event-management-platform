@@ -9,6 +9,9 @@ dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
+*.jar
+*.war
+*.ear
 
 # IDE
 .idea/
@@ -22,6 +25,9 @@ buildNumber.properties
 *.swp
 *.swo
 *~
+.~lock.*
+.cursor/
+*.code-workspace
 
 # Spring Boot
 application-local.yml
@@ -30,18 +36,86 @@ application-local.properties
 # Logs
 *.log
 logs/
+*-restart-*.log
+*-debug.log
+*-final.log
+*-simple.log
+startup.log
+
+# Node.js / Frontend
+node_modules/
+dist/
+build/
+.npm
+.eslintcache
+*.tsbuildinfo
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+*.temp
+
+# Documentation files (Word documents - personal notes)
+*.docx
+*.doc
+.~lock.*
+
+# Test results and reports
+api-test-results.txt
+test-results/
+coverage/
+.nyc_output/
+
+# Environment and config
+.env
+.env.local
+.env.*.local
+*.env
 
 # OS
 .DS_Store
 Thumbs.db
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
 
 # Docker
 docker-compose.override.yml
+.dockerignore
 
 # Secrets
 *.key
 *.pem
+*.p12
+*.jks
 secrets/
+*.secret
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.cache
+
+# Build artifacts
+*.class
+*.o
+*.so
+*.dylib
+*.dll
+
+# Keep test scripts - they're useful for the project
+# test-*.sh (keep these)
 
 
 
