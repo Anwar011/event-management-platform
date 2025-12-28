@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventHub Pro - Event Management Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        [x-cloak] { display: none !important; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen" x-data="app()" x-init="init()">
+    <!-- Navigation -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" @click.prevent="currentPage = 'home'" class="flex items-center">
+                        <i class="fas fa-calendar-alt text-white text-2xl mr-2"></i>
+                        <span class="text-white font-bold text-xl">EventHub Pro</span>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <template x-if="!isLoggedIn">
+                        <div class="space-x-2">
+                            <button @click="currentPage = 'login'" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium">
+                                Login
+                            </button>
+                            <button @click="currentPage = 'register'" class="bg-white text-purple-600 hover:bg-gray-100 px-4 py-2 rounded-md text-sm font-medium">
+                                Register
+                            </button>
+                        </div>
+                    </template>
+                    <template x-if="isLoggedIn">
+                        <div class="flex items-center space-x-4">
+                            <button @click="currentPage = 'events'" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-calendar mr-1"></i> Events
+                            </button>
+                            <button @click="currentPage = 'my-reservations'" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-ticket-alt mr-1"></i> My Tickets
+                            </button>
+                            <button @click="currentPage = 'create-event'" class="text-white hover:text-gray-200 px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-plus mr-1"></i> Create Event
+                            </button>
+                            <div class="flex items-center text-white">
+                                <i class="fas fa-user-circle text-xl mr-2"></i>
+                                <span x-text="user?.email" class="text-sm"></span>
+                            </div>
+                            <button @click="logout()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-sign-out-alt mr-1"></i> Logout
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Loading Overlay -->
+    <div x-show="loading" x-cloak class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <i class="fas fa-spinner fa-spin text-4xl text-purple-600"></i>
+            <p class="mt-2 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div x-show="notification.show" x-cloak 
+         x-transition:enter="transform ease-out duration-300"
+         x-transition:enter-start="translate-y-2 opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="transform ease-in duration-200"
+         x-transition:leave-start="translate-y-0 opacity-100"
+         x-transition:leave-end="translate-y-2 opacity-0"
+         class="fixed bottom-4 right-4 z-50">
+        <div :class="notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'" class="text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
+            <i :class="notification.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'" class="fas mr-2"></i>
+            <span x-text="notification.message"></span>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Home Page -->
+        <template x-if="currentPage === 'home'">
+            <div class="fade-in">
+                <!-- Hero Section -->
+                <div class="gradient-bg rounded-2xl p-12 mb-8 text-center text-white">
+                    <h1 class="text-4xl md:text-5xl font-bold mb-4">Discover Amazing Events</h1>
+                    <p class="text-xl mb-8 text-gray-200">Find and book tickets for concerts, conferences, workshops, and more</p>
+                    <button @click="currentPage = 'events'" class="bg-white text-purple-600 px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-100 transition">
+                        <i class="fas fa-search mr-2"></i> Browse Events
+                    </button>
+                </div>
+
+                <!-- Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-xl p-6 shadow-md text-center">
+                        <i class="fas fa-calendar-check text-4xl text-purple-600 mb-2"></i>
+                        <h3 class="text-3xl font-bold text-gray-800" x-text="stats.events">0</h3>
+                        <p class="text-gray-500">Events Available</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 shadow-md text-center">
+                        <i class="fas fa-users text-4xl text-green-600 mb-2"></i>
+                        <h3 class="text-3xl font-bold text-gray-800" x-text="stats.users">0</h3>
+                        <p class="text-gray-500">Happy Users</p>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 shadow-md text-center">
+                        <i class="fas fa-ticket-alt text-4xl text-blue-600 mb-2"></i>
+                        <h3 class="text-3xl font-bold text-gray-800" x-text="stats.reservations">0</h3>
+                        <p class="text-gray-500">Tickets Sold</p>
+                    </div>
+                </div>
+
+                <!-- Featured Events -->
+                <h2 class="text-2xl font-bold text-gray-800 mb-6"><i class="fas fa-star text-yellow-500 mr-2"></i>Featured Events</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="event in featuredEvents" :key="event.id">
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover transition-all duration-300 cursor-pointer" @click="viewEvent(event)">
+                            <div class="h-48 gradient-bg flex items-center justify-center">
+                                <i class="fas fa-calendar-day text-6xl text-white opacity-50"></i>
+                            </div>
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-2">
+                                    <h3 class="text-lg font-semibold text-gray-800" x-text="event.title || event.name"></h3>
+                                    <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full" x-text="'$' + event.price"></span>
+                                </div>
+                                <p class="text-gray-500 text-sm mb-4 line-clamp-2" x-text="event.description"></p>
+                                <div class="flex items-center text-gray-400 text-sm">
+                                    <i class="fas fa-map-marker-alt mr-1"></i>
+                                    <span x-text="event.venue"></span>
+                                </div>
+                                <div class="flex items-center text-gray-400 text-sm mt-1">
+                                    <i class="fas fa-calendar mr-1"></i>
+                                    <span x-text="formatDate(event.startDate)"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- Login Page -->
+        <template x-if="currentPage === 'login'">
+            <div class="max-w-md mx-auto fade-in">
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-center mb-8">
+                        <i class="fas fa-sign-in-alt text-5xl text-purple-600 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Welcome Back</h2>
+                        <p class="text-gray-500">Sign in to your account</p>
+                    </div>
+                    <form @submit.prevent="login()">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                            <input type="email" x-model="loginForm.email" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="you@example.com">
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                            <input type="password" x-model="loginForm.password" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-sign-in-alt mr-2"></i> Sign In
+                        </button>
+                    </form>
+                    <p class="text-center mt-6 text-gray-600">
+                        Don't have an account? 
+                        <a href="#" @click.prevent="currentPage = 'register'" class="text-purple-600 font-semibold hover:underline">Register</a>
+                    </p>
+                </div>
+            </div>
+        </template>
+
+        <!-- Register Page -->
+        <template x-if="currentPage === 'register'">
+            <div class="max-w-md mx-auto fade-in">
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-center mb-8">
+                        <i class="fas fa-user-plus text-5xl text-purple-600 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Create Account</h2>
+                        <p class="text-gray-500">Join our event community</p>
+                    </div>
+                    <form @submit.prevent="register()">
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">First Name</label>
+                                <input type="text" x-model="registerForm.firstName" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="John">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Last Name</label>
+                                <input type="text" x-model="registerForm.lastName" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="Doe">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Email</label>
+                            <input type="email" x-model="registerForm.email" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="you@example.com">
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Password</label>
+                            <input type="password" x-model="registerForm.password" required minlength="8"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="••••••••">
+                            <p class="text-xs text-gray-500 mt-1">At least 8 characters</p>
+                        </div>
+                        <button type="submit" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-user-plus mr-2"></i> Create Account
+                        </button>
+                    </form>
+                    <p class="text-center mt-6 text-gray-600">
+                        Already have an account? 
+                        <a href="#" @click.prevent="currentPage = 'login'" class="text-purple-600 font-semibold hover:underline">Sign In</a>
+                    </p>
+                </div>
+            </div>
+        </template>
+
+        <!-- Events Page -->
+        <template x-if="currentPage === 'events'">
+            <div class="fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h1 class="text-3xl font-bold text-gray-800"><i class="fas fa-calendar-alt text-purple-600 mr-2"></i>All Events</h1>
+                    <button @click="loadEvents()" class="text-purple-600 hover:text-purple-800">
+                        <i class="fas fa-sync-alt mr-1"></i> Refresh
+                    </button>
+                </div>
+                
+                <template x-if="events.length === 0">
+                    <div class="text-center py-12">
+                        <i class="fas fa-calendar-times text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500 text-lg">No events found</p>
+                    </div>
+                </template>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <template x-for="event in events" :key="event.id">
+                        <div class="bg-white rounded-xl shadow-md overflow-hidden card-hover transition-all duration-300">
+                            <div class="h-40 gradient-bg flex items-center justify-center relative">
+                                <i class="fas fa-calendar-day text-5xl text-white opacity-50"></i>
+                                <span class="absolute top-3 right-3 bg-white text-purple-600 px-3 py-1 rounded-full text-sm font-semibold" x-text="event.status"></span>
+                            </div>
+                            <div class="p-5">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-2" x-text="event.title || event.name"></h3>
+                                <p class="text-gray-500 text-sm mb-3 line-clamp-2" x-text="event.description"></p>
+                                <div class="space-y-1 mb-4">
+                                    <div class="flex items-center text-gray-400 text-sm">
+                                        <i class="fas fa-map-marker-alt w-5"></i>
+                                        <span x-text="event.venue"></span>
+                                    </div>
+                                    <div class="flex items-center text-gray-400 text-sm">
+                                        <i class="fas fa-calendar w-5"></i>
+                                        <span x-text="formatDate(event.startDate)"></span>
+                                    </div>
+                                    <div class="flex items-center text-gray-400 text-sm">
+                                        <i class="fas fa-users w-5"></i>
+                                        <span x-text="(event.availableCapacity || event.availableSeats || 0) + ' seats left'"></span>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-2xl font-bold text-purple-600" x-text="'$' + event.price"></span>
+                                    <button @click="viewEvent(event)" class="gradient-bg text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition">
+                                        <i class="fas fa-ticket-alt mr-1"></i> Book Now
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- Event Detail Page -->
+        <template x-if="currentPage === 'event-detail'">
+            <div class="fade-in max-w-4xl mx-auto">
+                <button @click="currentPage = 'events'" class="text-purple-600 hover:text-purple-800 mb-4">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Events
+                </button>
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                    <div class="h-64 gradient-bg flex items-center justify-center">
+                        <i class="fas fa-calendar-day text-8xl text-white opacity-50"></i>
+                    </div>
+                    <div class="p-8">
+                        <div class="flex justify-between items-start mb-6">
+                            <div>
+                                <h1 class="text-3xl font-bold text-gray-800" x-text="selectedEvent?.title || selectedEvent?.name"></h1>
+                                <span class="inline-block mt-2 bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm" x-text="selectedEvent?.status"></span>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-3xl font-bold text-purple-600" x-text="'$' + selectedEvent?.price"></p>
+                                <p class="text-gray-500">per ticket</p>
+                            </div>
+                        </div>
+                        
+                        <p class="text-gray-600 mb-8" x-text="selectedEvent?.description"></p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h3 class="font-semibold text-gray-800 mb-3"><i class="fas fa-info-circle text-purple-600 mr-2"></i>Event Details</h3>
+                                <div class="space-y-2 text-sm">
+                                    <p><i class="fas fa-map-marker-alt w-5 text-gray-400"></i> <span x-text="selectedEvent?.venue"></span></p>
+                                    <p><i class="fas fa-calendar w-5 text-gray-400"></i> <span x-text="formatDate(selectedEvent?.startDate)"></span></p>
+                                    <p><i class="fas fa-clock w-5 text-gray-400"></i> <span x-text="formatDate(selectedEvent?.endDate)"></span> (End)</p>
+                                    <p><i class="fas fa-users w-5 text-gray-400"></i> <span x-text="(selectedEvent?.availableCapacity || selectedEvent?.availableSeats || 0) + ' seats available'"></span></p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-50 rounded-lg p-4" x-show="isLoggedIn">
+                                <h3 class="font-semibold text-gray-800 mb-3"><i class="fas fa-ticket-alt text-purple-600 mr-2"></i>Book Tickets</h3>
+                                <form @submit.prevent="createReservation()">
+                                    <div class="mb-4">
+                                        <label class="block text-gray-700 text-sm mb-2">Number of Tickets</label>
+                                        <input type="number" x-model="reservationForm.quantity" min="1" :max="selectedEvent?.availableCapacity || selectedEvent?.availableSeats || 100" required
+                                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                                    </div>
+                                    <div class="mb-4 p-3 bg-white rounded-lg">
+                                        <p class="text-gray-600">Total: <span class="text-xl font-bold text-purple-600" x-text="'$' + (selectedEvent?.price * reservationForm.quantity).toFixed(2)"></span></p>
+                                    </div>
+                                    <button type="submit" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                                        <i class="fas fa-shopping-cart mr-2"></i> Reserve Now
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <div class="bg-yellow-50 rounded-lg p-4" x-show="!isLoggedIn">
+                                <p class="text-yellow-800"><i class="fas fa-exclamation-triangle mr-2"></i>Please <a href="#" @click.prevent="currentPage = 'login'" class="underline font-semibold">login</a> to book tickets</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <!-- My Reservations Page -->
+        <template x-if="currentPage === 'my-reservations'">
+            <div class="fade-in">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6"><i class="fas fa-ticket-alt text-purple-600 mr-2"></i>My Reservations</h1>
+                
+                <template x-if="reservations.length === 0">
+                    <div class="text-center py-12 bg-white rounded-xl shadow-md">
+                        <i class="fas fa-ticket-alt text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-gray-500 text-lg">No reservations yet</p>
+                        <button @click="currentPage = 'events'" class="mt-4 gradient-bg text-white px-6 py-2 rounded-lg">
+                            Browse Events
+                        </button>
+                    </div>
+                </template>
+
+                <div class="space-y-4">
+                    <template x-for="reservation in reservations" :key="reservation.id">
+                        <div class="bg-white rounded-xl shadow-md p-6">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="text-sm text-gray-500 mb-1">Reservation #<span x-text="reservation.reservationId || reservation.reservationNumber"></span></p>
+                                    <h3 class="text-xl font-semibold text-gray-800">Event ID: <span x-text="reservation.eventId"></span></h3>
+                                    <div class="mt-2 space-y-1 text-sm text-gray-600">
+                                        <p><i class="fas fa-ticket-alt w-5"></i> <span x-text="reservation.quantity"></span> tickets</p>
+                                        <p><i class="fas fa-dollar-sign w-5"></i> Total: $<span x-text="(reservation.totalPrice || 0).toFixed(2)"></span></p>
+                                        <p><i class="fas fa-calendar w-5"></i> Booked: <span x-text="formatDate(reservation.createdAt)"></span></p>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span :class="getStatusColor(reservation.status)" class="px-3 py-1 rounded-full text-sm font-medium" x-text="reservation.status"></span>
+                                    <template x-if="reservation.status === 'PENDING'">
+                                        <button @click="payForReservation(reservation)" class="mt-3 block gradient-bg text-white px-4 py-2 rounded-lg text-sm hover:opacity-90">
+                                            <i class="fas fa-credit-card mr-1"></i> Pay Now
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+
+        <!-- Create Event Page -->
+        <template x-if="currentPage === 'create-event'">
+            <div class="max-w-2xl mx-auto fade-in">
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-center mb-8">
+                        <i class="fas fa-plus-circle text-5xl text-purple-600 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Create New Event</h2>
+                        <p class="text-gray-500">Fill in the details below</p>
+                    </div>
+                    <form @submit.prevent="createEvent()">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Event Title</label>
+                            <input type="text" x-model="eventForm.title" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="Amazing Tech Conference">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Description</label>
+                            <textarea x-model="eventForm.description" required rows="3"
+                                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                      placeholder="Describe your event..."></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Venue</label>
+                            <input type="text" x-model="eventForm.venue" required
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                   placeholder="Convention Center">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">City</label>
+                                <input type="text" x-model="eventForm.city" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="New York">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Address</label>
+                                <input type="text" x-model="eventForm.address" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="123 Main St">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Start Date</label>
+                                <input type="datetime-local" x-model="eventForm.startDate" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">End Date</label>
+                                <input type="datetime-local" x-model="eventForm.endDate" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Price ($)</label>
+                                <input type="number" x-model="eventForm.price" required min="0" step="0.01"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="29.99">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Capacity</label>
+                                <input type="number" x-model="eventForm.capacity" required min="1"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="100">
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Event Type</label>
+                            <select x-model="eventForm.eventType" required
+                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                <option value="CONFERENCE">Conference</option>
+                                <option value="CONCERT">Concert</option>
+                                <option value="WORKSHOP">Workshop</option>
+                                <option value="SEMINAR">Seminar</option>
+                                <option value="MEETUP">Meetup</option>
+                                <option value="EXHIBITION">Exhibition</option>
+                                <option value="FESTIVAL">Festival</option>
+                                <option value="SPORTS">Sports</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-plus mr-2"></i> Create Event
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        <!-- Payment Page -->
+        <template x-if="currentPage === 'payment'">
+            <div class="max-w-lg mx-auto fade-in">
+                <div class="bg-white rounded-2xl shadow-xl p-8">
+                    <div class="text-center mb-8">
+                        <i class="fas fa-credit-card text-5xl text-purple-600 mb-4"></i>
+                        <h2 class="text-2xl font-bold text-gray-800">Complete Payment</h2>
+                        <p class="text-gray-500">Secure checkout</p>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                        <p class="text-sm text-gray-500">Payment for Reservation</p>
+                        <p class="text-lg font-semibold" x-text="'#' + (paymentReservation?.reservationId || paymentReservation?.reservationNumber)"></p>
+                        <p class="text-2xl font-bold text-purple-600 mt-2" x-text="'$' + (paymentReservation?.totalPrice || 0).toFixed(2)"></p>
+                    </div>
+
+                    <form @submit.prevent="processPayment()">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Card Number</label>
+                            <input type="text" x-model="paymentForm.cardNumber" required placeholder="4242 4242 4242 4242"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Expiry</label>
+                                <input type="text" x-model="paymentForm.expiry" required placeholder="12/26"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">CVC</label>
+                                <input type="text" x-model="paymentForm.cvc" required placeholder="123"
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-lock mr-2"></i> Pay Now
+                        </button>
+                    </form>
+                    
+                    <button @click="currentPage = 'my-reservations'" class="w-full mt-4 text-gray-600 hover:text-gray-800">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </template>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-gray-400">© 2025 EventHub Pro. All rights reserved.</p>
+            <p class="text-gray-500 text-sm mt-2">Powered by Spring Cloud Microservices</p>
+        </div>
+    </footer>
+
+    <script>
+        // Auto-detect API URL: use api-gateway hostname in Docker, localhost otherwise
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8080/v1' 
+            : `http://${window.location.hostname}:8080/v1`;
+        
+        function app() {
+            return {
+                currentPage: 'home',
+                loading: false,
+                isLoggedIn: false,
+                user: null,
+                token: null,
+                notification: { show: false, message: '', type: 'success' },
+                
+                // Data
+                events: [],
+                featuredEvents: [],
+                reservations: [],
+                selectedEvent: null,
+                paymentReservation: null,
+                stats: { events: 0, users: 100, reservations: 0 },
+                
+                // Forms
+                loginForm: { email: '', password: '' },
+                registerForm: { firstName: '', lastName: '', email: '', password: '' },
+                eventForm: { title: '', description: '', venue: '', address: '', city: '', startDate: '', endDate: '', price: '', capacity: '', eventType: 'CONFERENCE' },
+                reservationForm: { quantity: 1 },
+                paymentForm: { cardNumber: '', expiry: '', cvc: '' },
+                
+                async init() {
+                    // Check for saved token
+                    const savedToken = localStorage.getItem('token');
+                    const savedUser = localStorage.getItem('user');
+                    if (savedToken && savedUser) {
+                        this.token = savedToken;
+                        this.user = JSON.parse(savedUser);
+                        this.isLoggedIn = true;
+                        console.log('Restored user session:', this.user);
+                    }
+                    await this.loadEvents();
+                    if (this.isLoggedIn) {
+                        await this.loadReservations();
+                    }
+                },
+                
+                showNotification(message, type = 'success') {
+                    this.notification = { show: true, message, type };
+                    setTimeout(() => this.notification.show = false, 3000);
+                },
+                
+                formatDate(dateStr) {
+                    if (!dateStr) return '';
+                    return new Date(dateStr).toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                    });
+                },
+                
+                getStatusColor(status) {
+                    const colors = {
+                        'PENDING': 'bg-yellow-100 text-yellow-800',
+                        'CONFIRMED': 'bg-green-100 text-green-800',
+                        'CANCELLED': 'bg-red-100 text-red-800',
+                        'COMPLETED': 'bg-blue-100 text-blue-800'
+                    };
+                    return colors[status] || 'bg-gray-100 text-gray-800';
+                },
+                
+                async apiCall(method, endpoint, data = null, auth = true) {
+                    const headers = { 'Content-Type': 'application/json' };
+                    if (auth && this.token) {
+                        headers['Authorization'] = `Bearer ${this.token}`;
+                    }
+                    
+                    const config = { method, headers };
+                    if (data) config.body = JSON.stringify(data);
+                    
+                    const response = await fetch(`${API_BASE}${endpoint}`, config);
+                    if (!response.ok) {
+                        const error = await response.json().catch(() => ({ message: 'Request failed' }));
+                        throw new Error(error.message || 'Request failed');
+                    }
+                    return response.json().catch(() => ({}));
+                },
+                
+                async login() {
+                    this.loading = true;
+                    try {
+                        const result = await this.apiCall('POST', '/auth/login', this.loginForm, false);
+                        this.token = result.token;
+                        // Map the response to user object with id
+                        this.user = {
+                            id: result.userId || result.id,
+                            email: result.email,
+                            firstName: result.firstName,
+                            lastName: result.lastName,
+                            roles: result.roles
+                        };
+                        this.isLoggedIn = true;
+                        localStorage.setItem('token', this.token);
+                        localStorage.setItem('user', JSON.stringify(this.user));
+                        this.showNotification(`Welcome back, ${this.user.firstName || 'User'}!`);
+                        await this.loadEvents();
+                        await this.loadReservations();
+                        this.currentPage = 'events';
+                        this.loginForm = { email: '', password: '' };
+                    } catch (e) {
+                        this.showNotification(e.message || 'Login failed', 'error');
+                    }
+                    this.loading = false;
+                },
+                
+                async register() {
+                    this.loading = true;
+                    try {
+                        await this.apiCall('POST', '/auth/register', this.registerForm, false);
+                        this.showNotification('Account created! Please login.');
+                        this.currentPage = 'login';
+                        this.loginForm.email = this.registerForm.email;
+                        this.registerForm = { firstName: '', lastName: '', email: '', password: '' };
+                    } catch (e) {
+                        this.showNotification(e.message, 'error');
+                    }
+                    this.loading = false;
+                },
+                
+                logout() {
+                    this.token = null;
+                    this.user = null;
+                    this.isLoggedIn = false;
+                    this.reservations = [];
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    this.showNotification('Goodbye!');
+                    this.currentPage = 'home';
+                },
+                
+                async loadEvents() {
+                    this.loading = true;
+                    try {
+                        const result = await this.apiCall('GET', '/events', null, false);
+                        this.events = result.content || result || [];
+                        this.featuredEvents = this.events.slice(0, 6);
+                        this.stats.events = this.events.length;
+                    } catch (e) {
+                        console.error('Failed to load events:', e);
+                        // Use mock data if API fails
+                        this.events = [];
+                        this.featuredEvents = [];
+                    }
+                    this.loading = false;
+                },
+                
+                viewEvent(event) {
+                    this.selectedEvent = event;
+                    this.reservationForm.quantity = 1;
+                    this.currentPage = 'event-detail';
+                },
+                
+                async createEvent() {
+                    if (!this.isLoggedIn) {
+                        this.showNotification('Please login to create events', 'error');
+                        this.currentPage = 'login';
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    try {
+                        // Format dates properly for backend (datetime-local gives YYYY-MM-DDTHH:MM)
+                        const startDate = this.eventForm.startDate ? this.eventForm.startDate + ':00' : null;
+                        const endDate = this.eventForm.endDate ? this.eventForm.endDate + ':00' : null;
+                        
+                        const eventData = {
+                            title: this.eventForm.title,
+                            description: this.eventForm.description,
+                            venue: this.eventForm.venue,
+                            address: this.eventForm.address,
+                            city: this.eventForm.city,
+                            eventType: this.eventForm.eventType || 'CONFERENCE',
+                            startDate: startDate,
+                            endDate: endDate,
+                            price: parseFloat(this.eventForm.price) || 0,
+                            capacity: parseInt(this.eventForm.capacity) || 1,
+                            organizerId: this.user?.id || 1
+                        };
+                        
+                        console.log('Creating event with data:', eventData);
+                        const created = await this.apiCall('POST', '/events', eventData);
+                        console.log('Event created:', created);
+                        
+                        // Publish the event (POST not PUT)
+                        await this.apiCall('POST', `/events/${created.id}/publish`);
+                        this.showNotification('Event created and published!');
+                        this.eventForm = { title: '', description: '', venue: '', address: '', city: '', startDate: '', endDate: '', price: '', capacity: '', eventType: 'CONFERENCE' };
+                        await this.loadEvents();
+                        this.currentPage = 'events';
+                    } catch (e) {
+                        console.error('Event creation error:', e);
+                        this.showNotification(e.message || 'Failed to create event', 'error');
+                    }
+                    this.loading = false;
+                },
+                
+                async createReservation() {
+                    if (!this.isLoggedIn) {
+                        this.showNotification('Please login first', 'error');
+                        this.currentPage = 'login';
+                        return;
+                    }
+                    
+                    this.loading = true;
+                    try {
+                        const reservationData = {
+                            eventId: this.selectedEvent.id,
+                            userId: this.user?.id || 1,
+                            quantity: parseInt(this.reservationForm.quantity)
+                        };
+                        await this.apiCall('POST', '/reservations', reservationData);
+                        this.showNotification('Reservation created!');
+                        await this.loadReservations();
+                        this.currentPage = 'my-reservations';
+                    } catch (e) {
+                        this.showNotification(e.message, 'error');
+                    }
+                    this.loading = false;
+                },
+                
+                async loadReservations() {
+                    if (!this.isLoggedIn) return;
+                    this.loading = true;
+                    try {
+                        const userId = this.user?.id || 1;
+                        const result = await this.apiCall('GET', `/reservations/user/${userId}`);
+                        // Handle paginated response, array, or single object
+                        if (result.content) {
+                            this.reservations = result.content;
+                        } else if (Array.isArray(result)) {
+                            this.reservations = result;
+                        } else if (result && result.id) {
+                            this.reservations = [result];
+                        } else {
+                            this.reservations = [];
+                        }
+                        this.stats.reservations = this.reservations.length;
+                    } catch (e) {
+                        console.error('Failed to load reservations:', e);
+                        this.reservations = [];
+                    }
+                    this.loading = false;
+                },
+                
+                payForReservation(reservation) {
+                    this.paymentReservation = reservation;
+                    this.paymentForm = { cardNumber: '', expiry: '', cvc: '' };
+                    this.currentPage = 'payment';
+                },
+                
+                async processPayment() {
+                    this.loading = true;
+                    try {
+                        // Create payment intent with correct field names
+                        const paymentData = {
+                            reservationId: this.paymentReservation.reservationId || this.paymentReservation.reservationNumber || this.paymentReservation.id,
+                            amount: parseFloat(this.paymentReservation.totalPrice) || 0,
+                            currency: 'USD',
+                            userId: this.user?.id || 1,
+                            paymentMethod: 'CARD'
+                        };
+                        console.log('Creating payment intent:', paymentData);
+                        const intent = await this.apiCall('POST', '/payments/intents', paymentData);
+                        console.log('Payment intent created:', intent);
+                        
+                        // Capture the payment (use intentId from response)
+                        const captureResult = await this.apiCall('POST', `/payments/intents/${intent.intentId}/capture`);
+                        console.log('Payment captured:', captureResult);
+                        
+                        this.showNotification('Payment successful! Your tickets are confirmed.');
+                        await this.loadReservations();
+                        this.currentPage = 'my-reservations';
+                    } catch (e) {
+                        console.error('Payment error:', e);
+                        this.showNotification(e.message || 'Payment failed', 'error');
+                    }
+                    this.loading = false;
+                }
+            };
+        }
+    </script>
+</body>
+</html>
